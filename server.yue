@@ -5,7 +5,7 @@ require'prerequisites'
 BOARD = Board 80, 25
 
 colors = {'red', 'green', 'blue', 'yellow', 'cyan', 'magenta'}
-runes = {0x2D62, 0xE1E5, 0x16CB}
+runes = {0x2248, 0x25, 0xA7, 0x168F, 0x2D58, 0xEAAC, 0xEAB4}
 
 server =
   running: true
@@ -32,8 +32,8 @@ while server.running
     server.client[ip] ??= {
       id: '%06x'\format random 0xffffff
       :port
-      color: colors[random 6]
-      rune: runes[random 3]
+      color: colors[random #colors]
+      rune: runes[random #runes]
     }
     
     client = server.client[ip]

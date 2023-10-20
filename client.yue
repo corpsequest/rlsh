@@ -127,12 +127,12 @@ class CLIENT using Accessors
 		@socket\setpeername @addr, @port
 		@socket\settimeout 0
 		@send 'login'
-		print '* successfully connected to', @addr, @port
+		
 
 	disconnect: =>
 		@send 'logout'
 		@socket\close!
-		print '* successfully disconnected'
+		print '* disconnected'
 
 	prepare_to: (cmd, data) =>
 		@prepared ??= {}
@@ -172,6 +172,7 @@ class CLIENT using Accessors
 					our_turf = BOARD(turf.coordinates)
 					our_turf[k] = v for k, v in pairs turf	
 				when 'handshake'
+					print '* connected to', @addr, @port
 					@send 'update'
 				when 'pong'
 					@ping = false
