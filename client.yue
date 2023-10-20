@@ -163,14 +163,14 @@ class CLIENT using Accessors
 			local _cmd
 			if type(data) == 'string'
 				_cmd = data
-			else	
+			else
 				import _cmd from data
 			switch _cmd
 				when 'update'
 					@timeouts = 0
 					import turf from data
 					our_turf = BOARD(turf.coordinates)
-					our_turf[k] = v for k, v in pairs turf	
+					our_turf[k] = v for k, v in pairs turf
 				when 'handshake'
 					print '* connected to', @addr, @port
 					@send 'update'

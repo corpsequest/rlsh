@@ -61,8 +61,8 @@ class Board using Accessors
 			return dry.dir, @get_cell dry.pos
 
 	is_valid: (v2) =>
-		{:x, :y} = v2 
-        return false if type(x) != 'number' or type(y) != 'number'
+		{:x, :y} = v2
+		return false if type(x) != 'number' or type(y) != 'number'
         0 <= x and x <= @w and 0 <= y and y <= @h
 
 	get_cell: (v2) =>

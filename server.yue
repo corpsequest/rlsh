@@ -49,17 +49,18 @@ while server.running
         turf.glyph = rune
         broadcast
           _cmd: 'update'
-          :turf
+		  :turf
       when 'login'
         server.client[ip].port = port
         print '* ' .. server.client[ip].id .. ' connected *'
-        send ip, port, 'handshake'
+		send ip, port, 'handshake'
       when 'logout' then print '* ' .. server.client[ip].id .. ' disconnected *'
       when 'update'
         for pos, turf in BOARD\iterate!
-          send ip, port,
-            _cmd: 'update'
-            :turf
+		  msg =
+			_cmd: 'update'
+			:turf
+		  send ip, port, msg
       when 'ping'
         send ip, port, 'pong'
   elseif msg_or_ip != 'timeout' then

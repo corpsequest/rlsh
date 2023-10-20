@@ -1,6 +1,2 @@
 #!/usr/bin/env fish
-#!/usr/bin/env fish
-cd src
-yue -t ../ *.yue
-cd ..
-luajit -e "require('server')()"
+luajit -e "require('yue')'server'"

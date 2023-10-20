@@ -1,3 +1,2 @@
 #!/usr/bin/env fish
-yue .
-luajit -e "require('client')()"
+luajit -e "require('yue')'client'"
