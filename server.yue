@@ -1,0 +1,69 @@
+import random from math
+
+require'prerequisites'
+
+BOARD = Board 80, 25
+
+colors = {'red', 'green', 'blue', 'yellow', 'cyan', 'magenta'}
+runes = {0x2D62, 0xE1E5, 0x16CB}
+
+server =
+  running: true
+  port: 7734
+  client: {}
+
+server.udp = socket.udp!
+server.udp\settimeout 0
+res, err = server.udp\setsockname '*', server.port
+
+if res
+  print('*server started on port ' .. server.port .. '*')
+else
+  error err
+
+send = (ip, port, msg) -> server.udp\sendto bitser.dumps(msg), ip, port
+broadcast = (msg) -> send ip, info.port, msg for ip, info in pairs server.client
+
+while server.running
+  data, msg_or_ip, port_or_nil = server.udp\receivefrom!
+  if data
+    ip, port = msg_or_ip, port_or_nil
+
+    server.client[ip] ??= {
+      id: '%06x'\format random 0xffffff
+      :port
+      color: colors[random 6]
+      rune: runes[random 3]
+    }
+    
+    client = server.client[ip]
+
+    data = bitser.loads data
+
+    switch data._cmd
+      when 'paint'
+        import pos from data
+        import color, rune from client
+        turf = BOARD(pos)
+        turf.color = color
+        turf.glyph = rune
+        broadcast
+          _cmd: 'update'
+          :turf
+      when 'login'
+        server.client[ip].port = port
+        print '* ' .. server.client[ip].id .. ' connected *'
+        send ip, port, 'handshake'
+      when 'logout' then print '* ' .. server.client[ip].id .. ' disconnected *'
+      when 'update'
+        for pos, turf in BOARD\iterate!
+          send ip, port,
+            _cmd: 'update'
+            :turf
+      when 'ping'
+        send ip, port, 'pong'
+  elseif msg_or_ip != 'timeout' then
+    error 'unknown network error: ' .. tostring msg_or_ip
+  socket.sleep 0.01
+
+server.udp\close!

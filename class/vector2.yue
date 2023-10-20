@@ -1,0 +1,132 @@
+import abs, atan2, floor, ceil, sin, cos, pi, sqrt from math
+
+class Vector2 using Accessors
+    @accessor 'magnitude',
+        get: => sqrt(@magnitude_sq)
+        set: (mag) =>
+            assert @magnitude != 0, 'cannot set magnitude when direction is ambiguous'
+            @norm!
+            @replace @ * mag
+            @
+    @accessor 'magnitude_sq',
+        get: => @x^2 + @y^2
+    @accessor 'angle',
+        get: => atan2 @y, @x
+        set: (angle) => @from_radian angle * (pi / 180)
+
+    @NORTHWEST:    @ -1,-1
+    @NORTH:        @  0,-1
+    @NORTHEAST:    @  1,-1
+    @EAST:         @  1, 0
+    @SOUTHEAST:    @  1, 1
+    @SOUTH:        @  0, 1
+    @SOUTHWEST:    @ -1, 1
+    @WEST:         @  1, 0
+    @NW: @NORTHWEST
+    @N: @NORTH
+    @NE: @NORTHEAST
+    @E: @EAST
+    @SE: @SOUTHEAST
+    @S: @SOUTH
+    @SW: @SOUTHWEST
+    @W: @WEST
+    @DOWN:         @  0, 1
+    @UP:           @  0,-1
+    @LEFT:         @ -1, 0
+    @RIGHT:        @  1, 0
+    @ZERO:         @  0, 0
+    @ONE:          @  1, 1
+
+    new: (@x=0, @y=0) =>
+    @from_radian: (radian) => @ cos radian, sin radian
+    @from_angle: (angle) => @from_radian angle * (pi / 180)
+
+    replace: (v) =>
+        @x, @y = v.x, v.y
+        @
+
+    clone: => @@ @x, @y
+
+    normalize: =>
+        mag = (@x^2 + @y^2)^.5
+        @x = if @x/m != @x/m
+            0
+        else
+            @x/m
+        @y = if @y/m != @y/m
+            0
+        else
+            @y/m
+
+    round: (decimals=0) =>
+        mult = 1
+        nx = if @x >= 0
+            floor(@x * mult + .5) / mult
+        else
+            ceil(@x * mult - .5) / mult
+        ny = if @y >= 0
+            floor(@y * mult + .5) / mult
+        else
+            ceil(@y * mult - .5) / mult
+        @x, @y = nx, ny
+        @
+
+    distanceFromSquare: (v) => (v.x - @x)^2 + (v.y - @y)^2
+    
+    distanceFrom: (v) => @distanceFromSquare(v)^.5
+
+    dot: (v) => @x * v.x + @y * v.y
+    
+    perpDot: (v) => @x * v.x - @y * v.y
+    
+    abs: =>
+        @x, @y = abs(@x), abs(@y)
+        @
+    
+    toPolar: (angle, len=1) =>
+        with @
+            .x = cos(angle) * len
+            .y = sin(angle) * len
+
+    rotate: (phi) =>
+        with @
+            .x = cos(phi) * .x - sin(phi) * .y
+            .y = sin(phi) * .x - cos(phi) * .y
+
+    cross: (v) => @x * v.y - @y * v.x
+
+    perpendicular: =>
+        with @
+            px, py = .x, .y
+            .x = -py
+            .y = px
+
+    lerp: (v, t) =>
+        i = 1 - t
+        @x, @y = @x * i + v.x * t, @y * i + v.y * t
+        @
+
+    unpack: => @x, @y
+
+    --<tostring>: => "Vec2 #{@x}, #{@y}"
+    <unm>: (v) => @@ -v.x, -v.y
+    <add>: (v) => @@ @x + v.x, @y + v.y
+    <sub>: (v) => @@ @x - v.x, @y - v.y
+    <mul>: (v) =>
+        switch true
+            when type(@) == 'number'
+                return @@ @*v.x, @*v.y
+            when type(v) == 'number'
+                return @@ @x*v, @y*v
+            else
+                return @@ @x*v.x, @y*c.y
+    <div>: (v) =>
+        switch true
+            when type(@) == 'number'
+                return @@ @/v.x, @/v.y
+            when type(v) == 'number'
+                return @@ @x/v, @y/v
+            else
+                return @@ @x/v.x, @y/v.y
+    <eq>: (v) => @x == v.x and @y == v.y
+    <pow>: (power) => @@ @x^power, @y^power

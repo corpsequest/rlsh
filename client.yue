@@ -1,0 +1,247 @@
+require'prerequisites'
+
+import 'BearLibTerminal' as terminal
+import ADDRESS, PORT from config
+import abs, clamp, floor, max, random from math
+import insert from table
+import format from string
+
+global TTY
+global BOARD
+
+class CLIENT using Accessors
+    set: (...)		    	=> terminal.set ...
+    delay: (...)	    	=> terminal.delay ...
+    refresh:		    	=> terminal.refresh!
+    read:		    		=> terminal.read!
+    read_str: (x=0,
+			y=0,
+			s=" ",
+			maxW=@width - #s) => terminal.read_str x, y, s, maxW
+    color_from_name: (name) => terminal.color_from_name name
+    close:		    		=> 
+		@disconnect!
+		terminal.close!
+    clear:		    		=> terminal.clear!
+    clear_area: (x=0,
+			y=0,
+			w=@width,
+			h=@height)		=> terminal.clear_area x, y, w, h
+    peek:		    		=> terminal.peek!
+    state: (...)	    	=> terminal.state ...
+    check: (...)	    	=> terminal.check ...
+    put: (v, ...)	    	=> terminal.put v.x, v.y, ...
+    put_ext: (v, v2, ...)   => terminal.put_ext v.x, v.y, v2.x, v2.y, ...
+    layer: (...)	    	=> terminal.layer ...
+    print: (v,...)	    	=> terminal.print v.x, v.y, ...
+    printy: (v, v2, a, ...) => @print v.x, v.y, v2.x, v2.y, a, ...
+    printf: (v2,...)	    => @print v2.x, v2.y, ...
+    printyf: (v, v2, a, ...) => @print v.x, v.y, v2.x, v2.y, a, ...
+    measure: (s)	    	=> terminal.measure s --vararg: num width, num height
+    color: (c)		    	=> terminal.color c
+    bcolor: (c)		    	=> terminal.bkcolor c
+
+	@accessor 'title',
+		get: => @_title,
+		set: (@_title) => @set"window.title = '#{@title}'"
+	@accessor 'typeface',
+		get: => @_typeface,
+		set: (@_typeface) => @set"font: #{@typeface}, size=#{@font_size};"
+	@accessor 'font_size',
+		get: => @_font_size,
+		set: (@_font_size) => @set"font: #{@typeface}, size=#{@font_size};"
+	@accessor 'cursor',
+		get: => @_cursor
+		set: (@_cursor) => @inbuf, @enbuf = @textbuf\sub(1, @cursor), @textbuf\sub(@cursor + 1)
+    @accessor 'width',
+		get: => @state TK_WIDTH
+    @accessor 'height',
+		get: => @state TK_HEIGHT
+    @accessor 'W',
+		get: => @width
+    @accessor 'H',
+		get: => @height
+    @accessor 'cell_width',
+		get: => terminal.state TK_CELL_WIDTH
+    @accessor 'cell_height',
+		get: => terminal.state TK_CELL_HEIGHT
+    @accessor 'cellW',
+		get: => @cell_width
+    @accessor 'cellH',
+		get: => @cell_height
+    @accessor 'mouse_x',
+		get: => @state TK_MOUSE_X
+    @accessor 'mouse_y',
+		get: => @state TK_MOUSE_Y
+    @accessor 'mouse_v2',
+		get: => Vec2 @state(TK_MOUSE_X), @state(TK_MOUSE_Y)
+    @accessor 'has_input',
+		get: => terminal.has_input!
+
+    frametime:	1/60
+    frametimer: 0
+
+	running: true
+
+    new: (w = 80,
+		h = 25,
+		scale = 1,
+		@typeface = "resource/font/FSEX302.ttf",
+		@font_size = 24) =>
+			@ticks	    = 0
+			@steps	    = 0
+
+			@textbuf = ''
+			@inbuf = ''
+			@enbuf = ''
+			@caret = '_'
+
+			@cursor     = 0
+			@vursor     = 1
+			@size	    = 0
+
+			@history    = {}
+
+			@addr = ADDRESS
+			@port = PORT
+			@updr = 0.23
+
+			@connect!
+
+			terminal.open!
+			terminal.set"window: size=#{floor w}x#{floor h};"
+			terminal.set"font: #{@typeface}, size=#{@font_size};"
+			terminal.set"input.filter = [keyboard+, mouse+]"
+			terminal.set"input.mouse-cursor = false;"
+			
+			@title = "rlsh@#{@addr}:#{@port}"
+			
+			TTY = @
+			BOARD = Board w, h
+
+			@refresh!
+			@step! while @running
+
+	connect: =>
+		@socket = socket.udp!
+		@socket\setpeername @addr, @port
+		@socket\settimeout 0
+		@send 'login'
+		print '* successfully connected to', @addr, @port
+
+	disconnect: =>
+		@send 'logout'
+		@socket\close!
+		print '* successfully disconnected'
+
+	prepare_to: (cmd, data) =>
+		@prepared ??= {}
+		@prepared[] = 
+			:cmd
+			:data
+
+	send: (cmd, data={}) =>
+		data._cmd = cmd
+		@socket\send bitser.dumps data
+
+    update: (dt) =>
+		--ease.update dt
+		@ticks += dt
+		@caret = (time! % .6 < .3) and 0x25D6 or 0x20
+
+		if @ticks > @updr
+			@ticks -= @updr
+			@update_countdown ??= 10
+			@update_countdown -= 1
+			if @update_countdown < 0
+				@send 'update'
+				@update_countdown = 10
+
+		data, _error = @socket\receive!
+		while data
+			data = bitser.loads data
+			local _cmd
+			if type(data) == 'string'
+				_cmd = data
+			else	
+				import _cmd from data
+			switch _cmd
+				when 'update'
+					@timeouts = 0
+					import turf from data
+					our_turf = BOARD(turf.coordinates)
+					our_turf[k] = v for k, v in pairs turf	
+				when 'handshake'
+					@send 'update'
+				when 'pong'
+					@ping = false
+			else
+				print data
+			data, _error = @socket\receive!
+		if _error
+			@timeouts ??= 0
+			if _error != 'timeout' 
+				error 'unknown network error: ' .. tostring _error
+			else
+				@timeouts += 1
+				if @timeouts >= 100
+					@timeouts = 0
+					if @ping
+						@running = false
+						error _error
+					else
+						@send'ping'
+						@ping = true
+						
+
+    input: (key, char) =>
+		switch key
+			when TK_CLOSE
+				@close!
+				os.exit 0
+			when TK_MOUSE_LEFT
+				@holding_lmb = true
+				@send 'paint',
+					pos: @mouse_v2
+			when bit.bor TK_MOUSE_LEFT, TK_KEY_RELEASED
+				@holding_lmb = false
+			when TK_MOUSE_MOVE
+				if @holding_lmb
+					@send 'paint',
+						pos: @mouse_v2
+
+	render: (...) =>
+		@layer 0
+		@clear_area!
+		turf\draw! for v2, turf in BOARD\iterate!
+		@put @mouse_v2, 0x25CB
+
+	step: =>
+		if @has_input
+			@input @read!, @state TK_CHAR
+		
+		dt = if @time
+			offset = @time
+			@time = time!
+			@time - offset
+		else
+			@time = time!
+			0
+		
+		for v in *{1/2, 1, 2}
+			v *= @frametime
+			dt = v if abs(dt - v) < .002
+		dt = clamp dt, 0, @frametime*2
+		@frametimer += dt
+		@frametimer = clamp @frametimer, 0, @frametime*8
+		ticked = false
+		while @frametimer > @frametime
+			@frametimer -= @frametime
+			@update @frametime
+			ticked = true
+		if ticked
+			@render @frametimer / @frametime
+			@refresh!
+		@delay 1
+
+CLIENT!

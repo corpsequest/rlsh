@@ -1,0 +1,37 @@
+import floor from math
+import 'class.object' as Object
+
+class Turf extends Object
+	new: => @_contents = {}
+	
+	accept: (what) => true unless what in @contents
+
+	@accessor 'contents',
+		get: => [x for x in pairs @_contents when x.location == @]
+
+	glyph: 0x007E -- ~
+
+	color: Color.Grey
+
+	draw: =>
+		local g, c = @glyph, @color
+		if #@contents > 0
+			with top = @contents[#@contents]
+				g = .glyph
+				c = .color
+				
+				g = g top if type(g) == 'function'
+				c = c top if type(c) == 'function'
+				
+				if type(c) == 'table'
+					c = "#{floor c.r},#{floor c.g},#{floor c.b}"
+		TTY\color c
+		TTY\put @coordinates, g
+	
+	lmb: =>
+		return unless #@contents > 0
+		@contents[#@contents]\lmb?!
+
+	rmb: =>
+		return unless #@contents > 0
+		@contents[#@contents]\rmb?!

@@ -1,0 +1,51 @@
+require'extends.math'
+require'extends.string'
+
+lua = {:type}
+global isobject = (...) =>
+    if 'table' == type @
+        if 'table' == type @@ -- if it has/is a __class
+            if name = @@.__name -- if the class has a name
+                -- Get the extra arguments
+                names = {...}
+                -- Return the name if there are no extra arguments
+                return name if 0 == #names
+                -- Loop through the extra arguments
+                for n in *names
+                    -- Return the name if it equals one of the extra arguments
+                    return name if n == name
+                -- If the name does not equal any of the extra arguments
+                return nil
+    -- If it isn't an object or a class (with a name)
+    return false
+
+global isclass = (...) =>
+    -- If it is an object or a class (with a name)
+    if name = isobject @, ...
+        -- Return the name if the object is a class
+        -- (if the class of the object is the object itself)
+        return name if @ == @@
+        -- If it is an object but not a class
+        return false
+    -- If it is neither a class nor an object
+    return nil
+
+global isinstance = (obj) =>
+    -- If obj is an object or a class
+    if obj_name = isobject obj
+        -- If arg #1 is an object or a class
+        if name = isobject @
+            -- Get the class of obj
+            cls = obj.__class
+            -- Loop through the class and its parents
+            -- While cls.__parent returns a true value
+            while 'table' == type cls
+                -- Return  name of (the class of) obj if the (super)class of (the class of)
+                -- obj is (the class of) arg #1
+                return obj_name if name == cls.__name
+                -- Else proceed to the parent of the (super)class of obj
+                cls = cls.__parent
+            -- If (the class of) arg #1 is not a superclass of (the class of) obj
+            return false
+    -- If any of the args isn't an object or a class.
+    return nil

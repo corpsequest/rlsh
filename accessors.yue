@@ -1,0 +1,59 @@
+assignReadOnly = -> error "assigning a readonly property"
+Props =
+  __index: (name) =>
+    cls = @.<>
+    item = cls.__getter?[name] -- access properties
+    if item
+      return item @
+    else
+      item = rawget cls, name -- access member functions
+      if item?
+        return item
+      else
+        c = cls.<>
+        while c -- recursive to access base classes
+          item = c.__getter?[name]
+          if item
+            cls.__getter ??= {}
+            cls.__getter[name] = item -- cache base properties to class
+            return item @
+          else
+            item = rawget c, name
+            if item?
+              rawset cls, name, item -- cache base member to class
+              return item
+          c = c.<>
+        return nil
+
+  __newindex: (name, value) =>
+    cls = @.<>
+    item = cls.__setter?[name] -- access properties
+    if item
+      item @, value
+    else
+      c = cls.<>
+      while c -- recursive to access base classes
+        item = c.__setter?[name]
+        if item
+          cls.__setter ??= {}
+          cls.__setter[name] = item -- cache base property to class
+          item @, value
+          return
+        c = c.<>
+      rawset @, name, value -- assign field to self
+
+  accessor: (name, props)=>
+    {
+      :get
+      :set = assignReadOnly
+    } = props
+    if getter = rawget @__base, "__getter"
+      getter[name] = get
+    else
+      rawset @__base, "__getter", [name]: get
+    if setter = rawget @__base, "__setter"
+      setter[name] = set
+    else
+      rawset @__base, "__setter", [name]: set
+
+export default Props

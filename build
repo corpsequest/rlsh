@@ -1,0 +1,7 @@
+#!/usr/bin/env fish
+cd src
+yue -t ../ *.yue
+cd ..
+# only rm if rlsh.7z exists
+test -e rlsh.7z && rm rlsh.7z
+7z a rlsh

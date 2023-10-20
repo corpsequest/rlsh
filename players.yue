@@ -1,0 +1,20 @@
+class Players
+	@index: {}
+	@draw: => ply\draw! for id, player in pairs @index
+	@get: (id) => @index[id] unless id == nil
+	@set: (id, player) => @index[id] = player unless id == nil
+	
+	@size: =>
+		count = 0
+		for id, player in pairs @index
+			count += 1
+		count
+		
+	@nextID: =>
+		for i=1,256
+			return i unless @index[i]
+	
+	<tostring>: =>
+		str = "P L A Y E R S"
+		str ..= "#{id}: #{player.name}\n" for id, player in pairs @index
+		str

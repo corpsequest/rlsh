@@ -1,0 +1,41 @@
+import random from math
+class Object using Accessors
+    parent_of: isinstance
+
+    glyph: 0x3F
+
+    color: "grey"
+
+    move_to: (where) => 
+        error! if where == @location
+        error! unless where? and where.accept? and where\accept @
+        @location._contents[@] = nil if @location? and @location._contents?
+        @_location = where
+        where._contents[@] = true
+
+    @accessor 'location'
+        get: => @_location
+        set: (where) => @move_to where
+
+    @accessor 'turf'
+        get: =>
+            site = @
+            site = site.location until @parent == Turf
+            site
+    
+    @accessor 'parent'
+        get: =>
+            if isclass @
+                @__parent
+            else
+                @@__parent
+
+    @accessor 'xy'
+        get: => @turf.coordinates
+
+    @accessor 'x'
+        get: => @xy.x
+        
+    @accessor 'y'
+        get: => @xy.y
+        

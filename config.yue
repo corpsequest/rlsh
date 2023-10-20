@@ -1,0 +1,5 @@
+config =
+	ADDRESS: 	'76.129.26.50'
+	PORT: 		'7734'
+
+config

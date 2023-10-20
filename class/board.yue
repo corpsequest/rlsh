@@ -1,0 +1,133 @@
+class Board using Accessors
+	@DIRS:
+		EIGHT:
+			* Vec2.NORTH
+			* Vec2.NORTHEAST
+			* Vec2.EAST
+			* Vec2.SOUTHEAST
+			* Vec2.SOUTH
+			* Vec2.SOUTHWEST
+			* Vec2.WEST
+			* Vec2.NORTHWEST
+		FOUR:
+			* Vec2.UP
+			* Vec2.RIGHT
+			* Vec2.DOWN
+			* Vec2.LEFT
+
+	new: (@w = 80,
+		@h = 25,
+		@default = Turf) =>
+			error'Width must be a number' unless type(@w) == 'number'
+			error'Height must be a number' unless type(@h) == 'number'
+			error'Both width and height must be greater than 0' if @w <= 0 or @h <= 0
+			@_locked 	= false
+			@_grid 		= {}
+			@.<call> 	= (...) => @get_cell ...
+			@w -= 1
+			@h -= 1
+			@set_cell Vec2(x, y), @default for x=0,@w for y=0,@h
+
+	iterate: =>
+		x, y = -1, 0
+		->
+			if x < @w
+				x += 1
+			else
+				if y < @h
+					x = 0
+					y += 1
+				else
+					return
+			v = Vec2(x, y)
+			return v, @get_cell v
+
+	iterate_neighbors: (v2) =>
+		print v2, @is_valid, @is_valid v2
+		error! unless @is_valid v2
+		iterate_table = {}
+		for dir in *@DIRS.EIGHT
+			if @is_valid v2 + dir
+				iterate_table[] =
+					pos: v2 + dir
+					dir: dir
+		index = 0
+		return ->
+			if index < #iterate_table
+				index += 1
+			else
+				return
+			dry = iterate_table[index]
+			return dry.dir, @get_cell dry.pos
+
+	is_valid: (v2) =>
+		{:x, :y} = v2 
+        return false if type(x) != 'number' or type(y) != 'number'
+        0 <= x and x <= @w and 0 <= y and y <= @h
+
+	get_cell: (v2) =>
+		if @is_valid v2
+			@_grid[(v2.x) * @w + v2.y]
+		else
+			print inspect v2
+			error"something tried to get a cell from a Board via get_cell without valid numbers. STOP doing that; your numbers just now were #{v2.x}, #{v2.y}"
+
+	get_cells: (cells) =>
+		data = {}
+		error'something tried passing a value other than a table to a Board and her .get_cells. fix this at once' unless type(cells) == 'table'
+		for cell in *cells
+			unless @is_valid cell
+				error"something tried to get a cell from a valid grid with invalid numbers [ #{cell.x}, #{cell.y} ], while using Board.get_cells. FIX IT"
+			data[] = @get_cell cell if @is_valid cell
+		data
+
+	set_cell: (v2, turf) =>
+		if @is_valid v2
+			turf = turf!
+			@_grid[(v2.x) * @w + v2.y] = turf
+			turf.coordinates = v2\clone!
+		else
+			error'something tried to cet a cell from a Board via set_cell without valid numbers. STOP doing that'
+
+	reset_cell: (v2) =>
+		if @is_valid v2
+			@set_cell v2, @default
+			@get_cell v2
+
+	reset_all: => @set_cell v2, @default for v2 in @iterate!
+
+	populate: (data) =>
+		assert type(data) == 'table', 'you must populate using a table {v2, turf} try again'
+		for cell in *data
+			v2, obj = unpack cell
+			if @is_valid v2
+				obj ??= @default
+				@set_cell v2, obj
+
+	@accessor 'contents',
+		get: => [v for v2, v in @iterate!]
+
+	get_neighbor: (v2, vector) => @get_cell v2 + vector
+
+	get_neighbors: (v2) =>
+		data = {}
+		return {} unless @is_valid v2
+		for gx = -1, 1
+			for gy = -1, 1
+				vx = v2.x + gx
+				vy = v2.y + gy
+				data[] = {Vec2(vx, vy), @get_cell(vx, vy)} if @is_valid Vec2(vx, vy) and not (gx == 0 and gy == 0)
+		data
+
+	--this doesn't work yet
+	--at no point does it actually restrict cells existing beyond the board
+	resize: (nw, nh) =>
+		contents = @contents
+		@w, @h = nw, nh
+		@_grid = {}
+		@set_cell Vec2(x, y), @default for x=0,@w for y=0,@h
+		@populate contents
+
+	get_row: (y) => [@get_cell Vec2 x, y for x=0,@w when type (y) == 'number' and 0 < y and y < @h]
+
+	get_column: (x) => [@get_cell Vec2 x, y for y=0,@h when type (x) == 'number' and 0 < x and x < @w]

@@ -1,0 +1,18 @@
+require'prerequisites'
+prompt = require'sirocco'
+
+grub = prompt.list
+	prompt: '@$'
+	multiple: false
+	required: true
+	items:
+		*	value: 'user'
+			label: 'user'
+		*	value: 'host'
+			label: 'host'
+
+loaders =
+	user: require'client'
+	host: require'server'
+
+loaders[grub\ask![1]]!

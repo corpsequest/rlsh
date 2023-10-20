@@ -1,0 +1,25 @@
+import sin, max from math
+with string
+    --function that applies color tags
+        --like this: [color=#FF0000]
+    --each time it does it increments a value 
+        --that 'shifts' the rainbow forward a little
+    --this way each time the function is called each frame
+        --the rainbow will move
+    rainbow_tick = 0
+
+    .interrupt = (str, len) ->
+        if #str > len then
+            return str\sub 1, len .. "..."
+        else
+            return str
+
+    .chop = (str, len) -> return str\sub(1, len), str\sub(len+1, #str)
+
+    .slice = (str, start=0, stop=#str) -> --start and stop are inclusive
+        len = #str
+        if start < 0 then start = len + start
+        if start < 0 then start = 0
+        if stop < 0 then stop = len + stop
+        if stop > len then stop = len
+        return str\sub start, stop
