@@ -1,0 +1,4 @@
+import 'class.turf' as Turf
+
+class Floor extends Turf
+  glyph: 0x2E -- .

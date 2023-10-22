@@ -1,0 +1,81 @@
+--recursively divided maze
+  --http://en.wikipedia.org/wiki/Maze_generation_algorithm#Recursive_division_method
+
+FLOOR, WALL = 0, 1
+
+class DividedMaze extends require'class.map' using Accessors
+  create: (callback) =>
+	@_map = {}
+	for i = 1, @width
+	  @_map[] = {}
+	  for j = 1, @height
+		tile = if i == 1 or i == @width or j == 1 or j == @height
+		  WALL
+		else
+		  FLOOR
+		@_map[i][] = tile
+	@_stack = {{
+		2
+		2
+		@width - 1
+		@height - 1
+	}}
+	@_process!
+	return @ unless callback
+	for y = 1, @height
+	  for x = 1, @width
+		callback x, y, @_map[x][y]
+	@
+
+  _process: =>
+	while #@_stack > 0
+	  room = table.remove @_stack, 1
+	  @_partition_room room
+
+  _partition_room: (room) =>
+	availX, availY = {}, {}
+	for i = room[1] + 1, room[3] - 1
+	  top 		= @_map[i][room[2] - 1]
+	  bottom 	= @_map[i][room[4] + 1]
+	  availX[] 	= i if top > 0 and bottom > 0 and i % 2 == 0
+	for j = room[2] + 1, room[4] - 1
+	  left 		= @_map[room[1] - 1][j]
+	  right 	= @_map[room[3] + 1][j]
+	  availY[] 	= j if left > 0 and right > 0 and j % 2 == 0
+
+	return if #availX == 0 or #availY == 0
+
+	x = table.random availX
+	y = table.random availY
+
+	@_map[x][y] = WALL
+
+	walls 	= {}
+	walls[] = {}
+	for i = room[1], x - 1, 1
+	  @_map[i][y] 		= WALL
+	  walls[#walls][] 	= {i, y}
+	walls[] = {}
+	for i = x + 1, room[3], 1
+	  @_map[i][y] 		= WALL
+	  walls[#walls][] 	= {i, y}
+	walls[] = {}
+	for j = room[2], y - 1, 1
+	  @_map[x][j] 		= WALL
+	  walls[#walls][] 	= {x, j}
+	walls[] = {}
+	for j = y + 1, room[4], 1
+	  @_map[x][j] 		= WALL
+	  walls[#walls][] 	= {x, j}
+
+	solid = table.random walls
+	for i = 1, #walls
+	  w = walls[i]
+	  if w != solid
+		hole = table.random w
+		@_map[hole[1]][hole[2]] = FLOOR
+	
+	@_stack[] = {room[1], room[2], x - 1, y - 1}
+	@_stack[] = {x + 1, room[2], room[3], y - 1}
+	@_stack[] = {room[1], y + 1, x - 1, room[4]}
+	@_stack[] = {x + 1, y + 1, room[3], room[4]}

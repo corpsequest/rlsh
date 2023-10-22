@@ -1,5 +1,6 @@
 require'extends.math'
 require'extends.string'
+require'extends.table'
 
 lua = {:type}
 global isobject = (...) =>
@@ -49,3 +50,22 @@ global isinstance = (obj) =>
             return false
     -- If any of the args isn't an object or a class.
     return nil
+
+global istable = (tab) -> type(tab) == 'table'
+
+global assert = (pass, ...) ->
+  if pass
+	return pass, ...
+  elseif select '#', ... > 0
+	error table.concat({...}), 2
+  else
+	error 'assertion failed!', 2
+
+global bind = (func) => (...) -> func @, ...
+
+--returns string of length n of only char c
+global filler = (c, n) ->
+  assert type(c) == 'string' and #c == 1, 'filler: c must be a string of length 1'
+  s = ''
+  s ..= c for i = 1, n
+  s

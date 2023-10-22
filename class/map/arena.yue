@@ -1,0 +1,16 @@
+--generates an arena style map
+  --all cells except for the borders are floors
+  --the borders are walls
+
+FLOOR, WALL = 0, 1
+
+class Arena extends require'class.map' using Accessors
+  create: (callback) =>
+	return @ unless callback
+	for y = 1, @height
+	  for x = 1, @width
+		tile = if x > 1 and y > 1 and x < @width and y < @height
+		  FLOOR
+		else
+		  WALL
+		callback x, y, tile

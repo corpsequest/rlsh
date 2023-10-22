@@ -1,0 +1,229 @@
+--THIS IS THE WORST FILE IN THE ENTIRE PROJECT
+  --SERIOUSLY WHY THE FUCK IS IT LIKE THAT
+	--IF YOU THINK THIS IS BAD IMAGINE HOW IT LOOKS **IN LUA**
+
+import floor, min, max from math
+import 'class.pointset' as PointSet
+import 'class.room' as Room
+
+FLOOR, WALL, DOOR = 0, 1, 2
+
+class BrogueRoom extends Room
+  new: (@_dims, door_x, door_y) =>
+	@_doors, @_walls = PointSet!, PointSet!
+	@_doors\push door_x, door_y if door_x and door_y
+
+  @accessor 'left',
+	get: => min @_dims.x1, @_dims.x2
+
+  @accessor 'right',
+	get: => max @_dims.x1 + @_dims.w1, @_dims.x2 + @_dims.w2
+
+  @accessor 'top',
+	get: => min @_dims.y1, @_dims.y2
+
+  @accessor 'bottom',
+	get: => max @_dims.y1 + @_dims.h1, @_dims.y2 + @_dims.h2
+
+  create_entrance_room: (avail_width, avail_height, rng=@rng) =>
+	dims =
+	  w1: 9
+	  h1: 10
+	  w2: 20
+	  h2: 4
+
+	  x1: floor avail_width/2 - dims.w1/2
+	  y1: floor avail_height - dims.h1-1
+	  x2: floor avail_width/2 - dims.w2/2
+	  y2: floor avail_height - dims.h2-1
+
+	with @@ dims
+	  .rng = rng
+
+  create_random_at: (x, y, dx, dy, options, rng=@rng) =>
+	dims = {}
+
+	[mini, maxi] = options.room_width
+	dims.w1 = floor rng\random mini, maxi
+
+	[mini, maxi] = options.room_height
+	dims.h1 = floor rng\random mini, maxi
+
+	[mini, maxi] = options.cross_width
+	dims.w2 = floor rng\random mini, maxi
+
+	[mini, maxi] = options.cross_height
+	dims.h2 = floor rng\random mini, maxi
+
+	--OHHH MY **GOD**
+	--THIS CANNOT BE THE BEST WAY TO DO THIS
+	with dims
+	  if dx == 1
+		if .w1 > .w2
+		  .x1 = x + 1
+		  .y1 = y - floor(rng\random! * .h1)
+		  .x2 = floor(rng\random(.x1, (.x1 + .w1) - .w2))
+		  .y2 = floor(rng\random(.y1, (.y1 + .h1) - .h2))
+		else
+		  .x2 = x + 1
+		  .y2 = y - floor(rng\random! * .h2)
+		  .x1 = floor(rng\random(.x2, (.x2 + .w2) - .w1))
+		  .y1 = floor(rng\random(.y2, (.y2 + .h2) - .h1))
+	  else if dx == -1
+		if .w1 > .w2
+		  .x1 = x - .w1 - 1
+		  .y1 = y - floor(rng\random! * .h1)
+		  .x2 = floor(rng\random(.x1, (.x1 + .w1) - .w2))
+		  .y2 = floor(rng\random(.y1, (.y1 + .h1) - .h2))
+		else
+		  .x2 = x - .w2 - 1
+		  .y2 = y - floor(rng\random! * .h2)
+		  .x1 = floor(rng\random(.x2, (.x2 + .w2) - .w1))
+		  .y1 = floor(rng\random(.y2, (.y2 + .h2) - .h1))
+	  elseif dy == 1
+		if .h1 > .h2
+		  .y1 = y + 1
+		  .x1 = x - floor(rng\random! * .w1)
+		  .x2 = floor(rng\random(.x1, (.x1 + .w1) - .w2))
+		  .y2 = floor(rng\random(.y1, (.y1 + .h1) - .h2))
+		else
+		  .y2 = y + 1
+		  .x2 = x - floor(rng\random! * .w2)
+		  .x1 = floor(rng\random(.x2, (.x2 + .w2) - .w1))
+		  .y1 = floor(rng\random(.y2, (.y2 + .h2) - .h1))
+	  elseif dy == -1
+		if .h1 > h2
+		  .y1 = y - .h1 - 1
+		  .x1 = x - floor(rng\random! * .w1)
+		  .x2 = floor(rng\random(.x1, (.x1 + .w1) - .w2))
+		  .y2 = floor(rng\random(.y1, (.y1 + .h1) - .h2))
+		else
+		  .y2 = y - .h2 - 1
+		  .x2 = x - floor(rng\random! * .w2)
+		  .x1 = floor(rng\random(.x2, (.x2 + .w2) - .w1))
+		  .y1 = floor(rng\random(.y2, (.y2 + .h2) - .h1))
+	  else
+		error'dx or dy must be 1 or -1'
+
+	with @@ dims, x, y
+	  .rng = rng
+
+  create_random_center: (cx, cy, options, rng=@rng) =>
+	dims = {}
+	
+	[mini, maxi] = options.room_width
+	dims.w1 = floor rng\random mini, maxi
+
+	[mini, maxi] = options.room_height
+	dims.h1 = floor rng\random mini, maxi
+
+	dims.x1 = floor rng\random!*dims.w1
+	dims.y1 = floor rng\random!*dims.h1
+
+	[maxi, mini] = options.room_width
+	dims.w2 = floor rng\random mini, maxi
+
+	[maxi, mini] = options.room_height
+	dims.h2 = floor rng\random mini, maxi
+
+	dims.x2 = floor rng\random(dims.x1, (dims.x1 + dims.w1) - dims.w2)
+	dims.y2 = floor rng\random(dims.y1, (dims.y1 + dims.h1) - dims.h2)
+	dims.x2 = dims.x1 if dims.x2 != dims.x2 --WHAT THE FUCK???
+	dims.y2 = dims.y1 if dims.y2 != dims.y2 --WHAT THE FUCK!!!
+
+	with @@ dims
+	  .rng = rng
+
+  create_random: (avail_width, avail_height, options, rng=@rng) =>
+	dims = {}
+
+	[mini, maxi] = options.room_width
+	dims.w1 = floor rng\random mini, maxi
+
+	[mini, maxi] = options.room_height
+	dims.h1 = floor rng\random mini, maxi
+
+	left 	= avail_width - dims.w1
+	top 	= avail_height - dims.h1
+
+	dims.x1 = floor rng\random!*left
+	dims.y1 = floor rng\random!*top
+
+	[mini, maxi] = options.cross_width
+	dims.w2 = floor rng\random mini, maxi
+
+	[mini, maxi] = options.cross_height
+	dims.h2 = floor rng\random mini, maxi
+
+	dims.x2 = floor rng\random(dims.x1, (dims.x1 + dims.w1) - dims.w2)
+	dims.y2 = floor rng\random(dims.y1, (dims.y1 + dims.h1) - dims.h2)
+	dims.x2 = dims.x1 if dims.x2 != dims.x2 --SERIOUSLY, WHAT THE FUCK???
+	dims.y2 = dims.y1 if dims.y2 != dims.y2 --FUCKING WHY, WHEN, *HOW* WOULD THIS CONDITION BE TRUE???
+
+	with @@ dims
+	  .rng = rng
+
+  is_valid: (is_wall_callback, can_dig_callback) =>
+	dims = @_dims
+	--HOLY 
+	  --FUCKING 
+		--SHIT
+	return false if dims.x2 != dims.x2
+	return false if dims.y2 != dims.y2
+	return false if dims.x1 != dims.x1
+	return false if dims.y1 != dims.y1
+	--ARE YOU 
+	  --FUCKING 
+		--SERIOUS
+	left 	= @left - 1
+	right 	= @right + 1
+	top 	= @top - 1
+	bottom	= @bottom + 1
+	for x = left, right
+	  for y = top, bottom
+		if @_coord_is_floor x, y
+		  return false if not is_wall_callback(x, y) or not can_dig_callback(x, y)
+		elseif @_coord_is_wall x, y
+		  @_walls\push x, y
+	true
+
+  create: (dig_callback) =>
+	value = 0
+	left 	= @left - 1
+	right 	= @right + 1
+	top 	= @top - 1
+	bottom	= @bottom + 1
+	for x = left, right
+	  for y = top, bottom
+		value = if @_doors\find x, y
+		  DOOR
+		elseif @_coord_is_floor x, y
+		  FLOOR
+		else
+		  WALL
+
+  _coord_is_floor: (x, y) =>
+	d = @_dims
+	if x >= d.x1 and x <= d.x1+d.w1 and y >= d.y1 and y <= d.y1+d.h1
+	  return true
+	elseif x >= d.x2 and x <= d.x2+d.w2 and y >= d.y2 and y <= d.y2+d.h2
+	  return true
+	return false
+
+  _coord_is_wall: (x, y) =>
+	dirs = DIRS.EIGHT
+	for i = 1, #dirs
+	  return true if @_coord_is_floor x + dir[1], y + dir[2]
+	return false
+
+  debug: =>
+	str = ""
+	str ..= "#{k}=#{v}," for k, v in pairs @_dims
+	io.write str
+	io.flush!
+
+  _check_horizontal_edge: (is_wall_callback, x, y) =>
+	return @_walls\find(x, y) and @_walls\find(x - 1, y) and @_walls\find(x + 1, y)
+
+  _check_vertical_edge: (is_wall_callback, x, y) =>
+	return @_walls\find(x, y) and @_walls\find(x, y - 1) and @_walls\find(x, y + 1)

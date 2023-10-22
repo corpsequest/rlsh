@@ -1,0 +1,160 @@
+import floor from math
+import 'class.room' as Room
+import 'class.corridor' as Corridor
+import 'class.map.dungeon' as Dungeon
+
+FLOOR, WALL, DOOR = 0, 1, 2
+
+defaults =
+  room_width: {3, 8}
+  room_height: {3, 5}
+  corridor_length: {3, 7}
+  dug_percentage: .2
+  time_limit: 1000
+  no_corridors: false
+
+class Digger extends Dungeon
+  new: (width, height, @options={}) =>
+	super width, height
+  
+	@_dig_callback = bind @, @_dig_callback
+	@_is_wall_callback = bind @, @_is_wall_callback
+	@_can_dig_callback = bind @, @_can_dig_callback
+	@_priority_wall_callback = bind @, @_priority_wall_callback
+
+	@options[k] ??= v for k, v in pairs defaults
+
+	@_features =
+	  [Room]: 4
+	  [Corridor]: do if @options.no_corridors then 0 else 4
+	@_feature_attempts = 20
+	@_walls = {}
+
+  create: (callback) =>
+	@_rooms, @_corridors, @_walls = {}, {}, {}
+	@_map = @fill WALL
+	@_dug = 0
+
+	area = (@width - 2) * (@height - 2)
+
+	@_first_room!
+
+	t1 = os.clock!*1000
+	priority_walls = 0
+	repeat
+	  t2 = os.clock!*1000
+	  break if t2 - t1 > @options.time_limit
+
+	  wall = @_find_wall!
+	  break unless wall
+
+	  import x, y from wall
+	  if dir = @_get_digging_direction x, y
+		feature_attempts = 0
+		repeat
+		  feature_attempts += 1
+		  if @_try_feature x, y, dir[1], dir[2]
+			@_remove_surrounding_walls x, y
+			@_remove_surrounding_walls x - dir[1], y - dir[2]
+			break
+		until feature_attempts >= @_feature_attempts
+		priority_walls = 0
+		for i = 1, #@_walls
+		  wall = @_walls[i]
+		  priority_walls += 1 if wall.value > 1
+	until @_dug/area > @options.dug_percentage and priority_walls < 1
+
+	@_add_doors!
+
+	return @ unless callback
+	for y = 1, @height
+	  for x = 1, @width
+		callback x, y, @_map[x][y]
+	@
+
+  _dig_callback: (x, y, value) =>
+	switch value
+	  when FLOOR, DOOR
+		@_map[x][y] = FLOOR
+		@_dug += 1
+	  else
+		@set_wall x, y, WALL
+
+  _is_wall_callback: (x, y) =>
+	return false if x < 1 or y < 1 or x > @width or y > @height
+	@_map[x][y] == WALL
+
+  _can_dig_callback: (x, y) =>
+	return false if x < 2 or y < 2 or x >= @width or y >= @height
+	@_map[x][y] == WALL
+
+  _priority_wall_callback: (x, y) => @set_wall x, y, 2
+
+  _first_room: =>
+	cx, cy = floor(@width/2), floor(@height/2)
+	with room = Room!\create_random_center cx, cy, @options, @rng
+	  @_rooms[] = room
+	  \create @_dig_callback
+
+  _find_wall: =>
+	prio1, prio2 = {}, {}
+	for i = 1, #@_walls
+	  wall = @_walls[i]
+	  if wall.value > 1
+		prio2[] = wall
+	  else
+		prio1[] = wall
+	arr = if #prio2 > 0
+	  prio2
+	else
+	  prio1
+	return nil if #arr < 1
+	wall = table.random arr
+	@set_wall wall.x, wall.y, nil
+	wall
+
+  _try_feature: (x, y, dx, dy) =>
+	_type = @rng\get_weighted_value @_features
+	feature = _type\create_random_at x, y, dx, dy, @options, @rng
+
+	return false unless feature\is_valid @_is_wall_callback, @_can_dig_callback
+
+	feature\create @_dig_callback
+	switch _type.__class.__name
+	  when 'Room'
+		@_rooms[] = feature
+	  when 'Corridor'
+		feature\create_priority_walls @_priority_wall_callback
+		@_corridors[] = feature
+
+	true
+
+  _remove_surrounding_walls: (cx, cy) =>
+	deltas = DIRS.FOUR
+	for i=1, #deltas
+	  delta = deltas[i]
+	  x, y = cx + delta[1], cy + delta[2]
+	  @set_wall x, y, nil
+	  x, y = 2 * delta[1], 2 * delta[2]
+	  @set_wall x, y, nil
+  
+  _get_digging_direction: (cx, cy) =>
+	return nil if cx < 2 or cy < 2 or cx > @width-1 or cy > @height-1
+	deltas = DIRS.FOUR
+	result = nil
+
+	for i = 1, #deltas
+	  delta = deltas[i]
+	  x, y = cx + delta[1], cy + delta[2]
+	  if @_map[x][y] == 0
+		return nil if result
+		result = delta
+	return nil unless result
+
+	{ -result[1], -result[2] }
+
+  _add_doors: =>
+	for i = 1, #@_rooms
+	  with room = @_rooms[i]
+		\clear_doors!
+		\add_doors @_is_wall_callback

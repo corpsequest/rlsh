@@ -2,11 +2,14 @@ import random from math
 class Object using Accessors
     parent_of: isinstance
 
-    glyph: 0x3F
+	x: 0
+	y: 0
 
-    color: "grey"
+    glyph: 0x3F -- ?
 
-    move_to: (where) => 
+    color: Color.White
+
+    move_to: (where) =>
         error! if where == @location
         error! unless where? and where.accept? and where\accept @
         @location._contents[@] = nil if @location? and @location._contents?
@@ -29,13 +32,3 @@ class Object using Accessors
                 @__parent
             else
                 @@__parent
-
-    @accessor 'xy'
-        get: => @turf.coordinates
-
-    @accessor 'x'
-        get: => @xy.x
-        
-    @accessor 'y'
-        get: => @xy.y
-        

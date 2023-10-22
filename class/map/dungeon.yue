@@ -1,0 +1,40 @@
+import 'class.map' as Map
+
+class Dungeon extends Map
+  new: (width, height) =>
+	super width, height
+	@_rooms, @_corridors = {}, {}
+
+  @accessor 'rooms',
+	get: => @_rooms
+
+  @accessor 'doors',
+	get: =>
+	  result = {}
+	  for room in *@rooms
+		result[] = :x, :y for _, x, y in room._doors\each!
+	  result
+
+  @accessor 'corridors',
+	get: => @_corridors
+
+  _get_detail: (name, x, y) =>
+	t = @[name]
+	for i = 1, #t
+	  return t[i], i if t[i].x == x and t[i].y == y
+
+  _set_detail: (name, x, y, value) =>
+	detail, i = @_get_detail name, x, y
+	if detail
+	  if value
+		detail.value = value
+	  else
+		table.remove @[name], i
+	elseif value
+	  t = @[name]
+	  detail = :x, :y, :value
+	  t[] = detail
+	detail
+
+  get_wall: (x, y) => @_get_detail '_walls', x, y
+  set_wall: (x, y, value) => @_set_detail '_walls', x, y, value

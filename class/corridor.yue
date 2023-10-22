@@ -1,0 +1,83 @@
+import abs, floor, max from math
+import 'class.feature' as Feature
+
+FLOOR, WALL, DOOR = 0, 1, 2
+
+class Corridor extends Feature
+  new: (@_startX, @_startY, @_endX, @_endY) => @_ends_with_wall = true
+
+  create_random_at: (x, y, dx, dy, options, rng=@rng) =>
+	{mini, maxi} = options.corridor_length
+	length = floor rng\random mini, maxi
+	with @@ x, y, x + dx * length, y + dy * length
+	  .rng = rng
+
+  debug: =>
+	debug_string = "corridor: #{@_startX},#{@_startY} -> #{@_endX},#{@_endY}"
+	io.write debug_string
+	io.flush!
+
+  is_valid: (is_wall_callback, can_dig_callback) =>
+	sx, sy = @_startX, @_startY
+	dx, dy = @_endX - sx, @_endY - sy
+	length = 1 + max abs(dx), abs(dy)
+  
+	if dx != 0
+	  dx /= abs dx
+	if dy != 0
+	  dy /= abs dy
+
+	nx = dy
+	ny = -dx
+
+	ok = true
+
+	for i = 0, length - 1
+	  x = sx + i * dx
+	  y = sy + i * dy
+	  ok = false unless can_dig_callback x, y
+	  ok = false unless is_wall_callback x + nx, y + ny
+	  ok = false unless is_wall_callback x - nx, y - ny
+	  unless ok
+		length = i
+		@_endX = x - dx
+		@_endY = y - dy
+		break
+
+	return false if length == 0
+	return false if length == 1 and is_wall_callback @_endX + dx, @_endY + dy
+
+	first_corner_bad = not is_wall_callback @_endX + dx + nx, @_endY + dy + ny
+	second_corner_bad = not is_wall_callback @_endX + dx - nx, @_endY + dy - ny
+	@_ends_with_wall = is_wall_callback @_endX + dx, @_endY + dy
+	return false if (first_corner_bad or second_corner_bad) and @_ends_with_wall
+
+	true
+
+  create: (dig_callback) =>
+	sx, sy = @_startX, @_startY
+	dx, dy = @_endX - sx, @_endY - sy
+
+	length = 1 + max abs(dx), abs(dy)
+	dx /= abs dx if dx != 0
+	dy /= abs dy if dy != 0
+
+	for i = 0, length - 1
+	  x = sx + i * dx
+	  y = sy + i * dy
+	  dig_callback x, y, 0
+
+  create_priority_walls: (priority_wall_callback) =>
+	--return unless @_ends_with_wall
+
+	sx, sy = @_startX, @_startY
+	dx, dy = @_endX - sx, @_endY - sy
+
+	dx /= abs dx if dx != 0
+	dy /= abs dy if dy != 0
+	nx = dy
+	ny = -dx
+
+	priority_wall_callback @_endX + dx, @_endY + dy
+	priority_wall_callback @_endX + nx, @_endY + ny
+	priority_wall_callback @_endX - nx, @_endY - ny--]]

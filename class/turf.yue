@@ -9,24 +9,24 @@ class Turf extends Object
 	@accessor 'contents',
 		get: => [x for x in pairs @_contents when x.location == @]
 
-	glyph: 0x007E -- ~
+	glyph: 0x20 --space
 
 	color: Color.Grey
 
 	draw: =>
-		local g, c = @glyph, @color
+		g, c = @glyph, @color
 		if #@contents > 0
-			with top = @contents[#@contents]
-				g = .glyph
-				c = .color
+		  with top = @contents[#@contents]
+			g = .glyph
+			c = .color
 				
-				g = g top if type(g) == 'function'
-				c = c top if type(c) == 'function'
+			g = g top if type(g) == 'function'
+			c = c top if type(c) == 'function'
 				
-				if type(c) == 'table'
-					c = "#{floor c.r},#{floor c.g},#{floor c.b}"
+			if type(c) == 'table'
+			  c = "#{floor c.r},#{floor c.g},#{floor c.b}"
 		TTY\color c
-		TTY\put @coordinates, g
+		TTY\put @x - 1, @y - 1, g
 	
 	lmb: =>
 		return unless #@contents > 0

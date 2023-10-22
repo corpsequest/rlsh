@@ -1,0 +1,165 @@
+import ceil, floor from math
+import 'class.pointset' as PointSet
+import 'class.feature' as Feature
+
+FLOOR, WALL, DOOR = 0, 1, 2
+
+class Room extends Feature
+  new: (@_x1, @_y1, @_x2, @_y2, doorX, doorY) =>
+	super!
+	@_doors = PointSet!
+	@add_door doorX, doorY if doorX and doorY
+
+  @accessor 'left',
+	get: => @_x1
+	set: (@_x1) =>
+
+  @accessor 'right',
+	get: => @_x2
+	set: (@_x2) =>
+
+  @accessor 'top',
+	get: => @_y1
+	set: (@_y1) =>
+
+  @accessor 'bottom',
+	get: => @_y2
+	set: (@_y2) =>
+
+  @accessor 'center',
+	get: => {ceil((@left + @right)/2), ceil((@top + @bottom)/2)}
+
+  create_random_at: (x, y, dx, dy, options, rng=@rng) =>
+	{mini, maxi} = options.room_width
+	width = rng\get_uniform_int mini, maxi
+
+	{mini, maxi} = options.room_height
+	height = rng\get_uniform_int mini, maxi
+
+	switch dx
+	  when 1
+		y2 = y - floor rng.uniform * height
+		return with @@ x + 1, y2, x + width, y2 + height - 1, x, y
+		  .rng = rng
+	  when -1
+		y2 = y - floor rng.uniform * height
+		return with @@ x - width, y2, x - 1, y2 + height - 1, x, y
+		  .rng = rng
+	switch dy
+	  when 1
+		x2 = x - floor rng.uniform * width
+		return with @@ x2, y + 1, x2 + width - 1, y + height, x, y
+		  .rng = rng
+	  when -1
+		x2 = x - floor rng.uniform * width
+		return with @@ x2, y - height, x2 + width - 1, y - 1, x, y
+		  .rng = rng
+
+  create_random_center: (cx, cy, options, rng=@rng) =>
+	{mini, maxi} = options.room_width
+	width = rng\get_uniform_int mini, maxi
+
+	{mini, maxi} = options.room_height
+	height = rng\get_uniform_int mini, maxi
+
+	x1 = cx - floor rng.uniform * width
+	y1 = cy - floor rng.uniform * height
+	x2 = x1 + width - 1
+	y2 = y1 + height - 1
+
+	with @@ x1, y1, x2, y2
+	  .rng = rng
+
+  create_random: (avail_width, avail_height, options, rng=@rng) =>
+	{mini, maxi} = options.room_width
+	width = rng\get_uniform_int mini, maxi
+
+	{mini, maxi} = options.room_height
+	height = rng\get_uniform_int mini, maxi
+
+	left = avail_width - width
+	top = avail_height - height
+
+	x1 = floor rng\random! * left
+	y1 = floor rng\random! * top
+	x2 = x1 + width
+	y2 = y1 + height
+
+	with @@ x1, y1, x2, y2
+	  .rng = rng
+  
+  add_door: (x, y) => @_doors\push x, y
+
+  get_doors: (callback) => callback?! for _, x, y in @_doors\each!
+
+  clear_doors: =>
+	@_doors = PointSet!
+	@
+
+  _check_horizontal_edge: (is_wall_callback, x, y) =>
+	top = @top - 1
+	bottom = @bottom + 1
+	y == top or y == bottom unless (is_wall_callback(x,y+1) or is_wall_callback(x,y-1))
+
+  _check_vertical_edge: (is_wall_callback, x, y) =>
+	left = @left - 1
+	right = @right + 1
+	x == left or x == right unless (is_wall_callback(x+1,y) or is_wall_callback(x-1,y))
+
+  _check_edge: (is_wall_callback, x, y) =>
+	v = @_check_vertical_edge is_wall_callback, x, y
+	h = @_check_horizontal_edge is_wall_callback, x, y
+	v or h
+
+  add_doors: (is_wall_callback) =>
+	left = @left - 1
+	right = @right + 1
+	top = @top - 1
+	bottom = @bottom + 1
+	for x = left, right
+	  for y = top, bottom
+		continue if is_wall_callback x, y
+		@add_door x, y if @_check_edge is_wall_callback, x, y
+	@
+
+  debug: =>
+	door = 'doors'
+	door ..= "; #{x},#{y}" for _, x, y in @_doors\each!
+	debug_string = "room	: #{@left},#{@top} -> #{@right},#{@bottom} (#{@width}x#{@height}) #{door}"
+	io.write debug_string
+	io.flush!
+
+  is_valid: (is_wall_callback, can_dig_callback) =>
+	left = @left - 1
+	right = @right + 1
+	top = @top - 1
+	bottom = @bottom + 1
+	for x = left, right
+	  for y = top, bottom
+		switch x
+		  when left, right
+			return false unless is_wall_callback x, y
+		  else
+			return false unless can_dig_callback x, y
+		switch y
+		  when top, bottom
+			return false unless is_wall_callback x, y
+		  else
+			return false unless can_dig_callback x, y
+	true
+
+  create: (dig_callback) =>
+	left = @left - 1
+	right = @right + 1
+	top = @top - 1
+	bottom = @bottom + 1
+	value = 0
+	for x = left, right
+	  for y = top, bottom
+		value = if @_doors\find x, y
+		  DOOR
+		elseif x == left or x == right or y == top or y == bottom
+		  WALL
+		else
+		  FLOOR
+		dig_callback x, y, value

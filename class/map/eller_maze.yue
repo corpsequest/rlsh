@@ -1,0 +1,67 @@
+import ceil from math
+
+Board = require'class.board'
+
+FLOOR, WALL = 0, 1
+
+class EllerMaze extends require'class.map'
+  create: (callback) =>
+	map = Board!
+	w = ceil (@width - 2) / 2
+	rand = 9/24
+	L, R = {}, {}
+
+	for i = 1, w
+	  L[] = i
+	  R[] = i
+
+	L[] = w
+	j = 2
+	while j < @height - 2
+	  for i = 1, w
+		x = 2 * i
+		y = j
+		map\set_cell x, y, FLOOR
+
+		if i != L[i+1] and @rng\random! > rand
+		  @_add_to_list i, L, R
+		  map\set_cell x+1, y, FLOOR
+
+		if i != L[i] and @rng\random! > rand
+		  @_remove_from_list i, L, R
+		else
+		  map\set_cell x, y + 1, FLOOR
+	  j += 2
+
+	for i = 1, w
+	  x = 2 * i
+	  y = j
+	  map\set_cell x, y, FLOOR
+
+	  if i != L[i+1] and (i==L[i] or @rng\random! > rand)
+		@_add_to_list i, L, R
+		map\set_cell x+1, y, FLOOR
+
+	  @_remove_from_list i, L, R
+
+	return @ unless callback
+	for y = 1, @height
+	  for x = 1, @width
+		cell = map\get_cell x, y
+		cell ??= WALL
+		callback x, y, cell
+
+	@
+
+  --hell if i know what these do or how they work
+  _remove_from_list: (i, L, R) =>
+	R[L[i]] = R[i]
+	L[R[i]] = L[i]
+	R[i] 	= i
+	L[i] 	= i
+
+  _add_to_list: (i, L, R) =>
+	R[L[i+1]] 	= R[i]
+	L[R[i]] 	= L[i+1]
+	R[i] 		= i+1
+	L[i+1] 		= i

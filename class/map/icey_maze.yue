@@ -1,0 +1,83 @@
+import floor from math
+
+FLOOR, WALL = 0, 1
+
+class IceyMaze extends require'class.map'
+  new: (@width, @height, @regularity=0) => super @width, @height
+
+  create: (callback) =>
+	w, h = @width, @height
+	map = @fill WALL
+	w = w % 2 == 1 and w - 1 or w - 2
+	h = h % 2 == 1 and h - 1 or h - 2
+
+	cx, cy, nx, ny = 1, 1, 1, 1
+	done 	= 0
+	blocked	= false
+	dirs 	= {
+	  {0, 0}
+	  {0, 0}
+	  {0, 0}
+	  {0, 0}
+	}
+
+	repeat
+	  cx = 2 + 2 * floor(@rng\random! * (w - 1) / 2)
+	  cy = 2 + 2 * floor(@rng\random! * (h - 1) / 2)
+	  map[cx][cy] = 0 if done == 0
+	  if map[cx][cy] == 0
+		@_randomize dirs
+		repeat
+		  if floor(@rng\random!*(@regularity+1))==0 then @_randomize dirs
+		  blocked = true
+		  for i = 1, 4
+			nx = cx + dirs[i][1] * 2
+			ny = cy + dirs[i][2] * 2
+			if @_is_free map, nx, ny, w, h
+			  map[nx][ny] = 0
+			  map[cx + dirs[i][1]][cy + dirs[i][2]] = 0
+			  cx = nx
+			  cy = ny
+			  blocked = false
+			  done += 1
+			  break
+		until blocked
+	until done + 1 >= (w*h)/4
+
+	return @ unless callback
+	for y = 1, h
+	  for x = 1, w
+		callback x, y, map[x][y]
+	@
+
+  _randomize: (dirs) =>
+	for i = 1, 4
+	  dirs[i][1] = 0
+	  dirs[i][2] = 0
+	rand = floor(@rng\random! * 4)
+	switch rand
+	  when 0
+		dirs[1][1] = -1
+		dirs[3][2] = -1
+		dirs[2][1] =  1
+		dirs[4][2] =  1
+	  when 1
+		dirs[4][1] = -1
+		dirs[2][2] = -1
+		dirs[3][1] =  1
+		dirs[1][2] =  1
+	  when 2
+		dirs[3][1] = -1
+		dirs[1][2] = -1
+		dirs[4][1] =  1
+		dirs[2][2] =  1
+	  when 3
+		dirs[2][1] = -1
+		dirs[4][2] = -1
+		dirs[1][1] =  1
+		dirs[3][2] =  1
+
+  _is_free: (map, x, y, w, h) =>
+	if x < 2 or y < 2 or x > w or y > h
+	  return false
+	return map[x][y] != 0

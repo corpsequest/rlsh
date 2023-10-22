@@ -1,8 +1,11 @@
 import random from math
 
 require'prerequisites'
+require'class.rng'
 
-BOARD = Board 80, 25
+WIDTH, HEIGHT = 80, 25
+
+BOARD = Board WIDTH, HEIGHT
 
 colors = {'red', 'green', 'blue', 'yellow', 'cyan', 'magenta'}
 runes = {0x2248, 0x25, 0xA7, 0x168F, 0x2D58, 0xEAAC, 0xEAB4}
@@ -24,16 +27,43 @@ else
 send = (ip, port, msg) -> server.udp\sendto bitser.dumps(msg), ip, port
 broadcast = (msg) -> send ip, info.port, msg for ip, info in pairs server.client
 
+Floor, Wall = require'class.turf.floor', require'class.turf.wall'
+
+with mapper = require'class.map.rogue' WIDTH, HEIGHT
+  \create (x, y, turf) ->
+	FLOOR, WALL = 0, 1
+	code = turf
+	turf = switch turf
+	  when FLOOR 	then Floor!
+	  when WALL 	then Wall!
+	turf.code = code
+	BOARD\set_cell x, y, turf
+
+update = (ip, port) ->
+  for x = 1, WIDTH
+	cells = {}
+	for y = 1, HEIGHT
+	  c = BOARD\get_cell x, y
+	  import color, glyph from c
+	  cells[] =
+		:x
+		:y 
+		:color
+		:glyph
+	msg =
+	  _cmd: 'batch'
+	  :cells
+	send ip, port, msg
+	socket.sleep .001
+
 while server.running
   data, msg_or_ip, port_or_nil = server.udp\receivefrom!
   if data
     ip, port = msg_or_ip, port_or_nil
 
     server.client[ip] ??= {
-      id: '%06x'\format random 0xffffff
+	  id: '%06x'\format random 0xffffff
       :port
-      color: colors[random #colors]
-      rune: runes[random #runes]
     }
     
     client = server.client[ip]
@@ -41,30 +71,18 @@ while server.running
     data = bitser.loads data
 
     switch data._cmd
-      when 'paint'
-        import pos from data
-        import color, rune from client
-        turf = BOARD(pos)
-        turf.color = color
-        turf.glyph = rune
-        broadcast
-          _cmd: 'update'
-		  :turf
       when 'login'
         server.client[ip].port = port
         print '* ' .. server.client[ip].id .. ' connected *'
-		send ip, port, 'handshake'
+		socket.sleep .01
+		update ip, port
       when 'logout' then print '* ' .. server.client[ip].id .. ' disconnected *'
-      when 'update'
-        for pos, turf in BOARD\iterate!
-		  msg =
-			_cmd: 'update'
-			:turf
-		  send ip, port, msg
+	  when 'update' then update ip, port
       when 'ping'
         send ip, port, 'pong'
   elseif msg_or_ip != 'timeout' then
     error 'unknown network error: ' .. tostring msg_or_ip
-  socket.sleep 0.01
+	
+  socket.sleep .01
 
 server.udp\close!

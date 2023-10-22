@@ -1,0 +1,18 @@
+RNG = require'class.rng'
+
+class Map using Accessors
+  new: (@width, @height) => @rng = RNG
+
+  @accessor 'rng',
+	get: => @_rng
+	set: (@_rng) =>
+
+  create: =>
+
+  fill: (tile) =>
+	map = {}
+	for x = 1, @width
+	  map[x] = {}
+	  for y = 1, @height
+		map[x][y] = tile
+	map

@@ -1,0 +1,271 @@
+import abs, ceil, floor, min, max, round from math
+import 'class.map' as Map
+
+FLOOR, WALL, DOOR = 0, 1, 2
+
+calculate_room_size = (size, cell) ->
+  maxi = floor (size/cell)*.8
+  mini = floor (size/cell)*.25
+  mini = max mini, 2
+  maxi = max maxi, 2
+  {mini, maxi}
+
+class Rogue extends Map
+  new: (width, height, @options={}) =>
+	super width, height
+	@_doors = {}
+	defaults =
+	  cell_width: floor width*.0375
+	  cell_height: floor height*.125
+	@options[k] = v for k, v in pairs defaults
+	with @options
+	  unless .room_width
+		.room_width = calculate_room_size @width, .cell_width
+	  unless .room_height
+		.room_height = calculate_room_size @height, .cell_height
+
+  create: (callback) =>
+	@map = @fill WALL
+	@_rooms = {}
+	@_connected_cells = {}
+
+	@_init_rooms!
+	@_connect_rooms!
+	@_connect_unconnected_rooms!
+	@_create_random_room_connections!
+	@_create_rooms!
+	@_create_corridors!
+	return @ unless callback
+	for y = 1, @height
+	  for x = 1, @width
+		callback x, y, @map[x][y]
+	@
+
+  _get_random_int: (mini=0, maxi=1) => floor @rng\random mini, maxi
+
+  _init_rooms: =>
+	for i = 1, @options.cell_width
+	  @_rooms[i] = {}
+	  for j = 1, @options.cell_height
+		@_rooms[i][j] =
+		  x: 0
+		  y: 0
+		  width: 0
+		  height: 0
+		  connections: {}
+		  cellx: i
+		  celly: j
+	
+  _connect_rooms: =>
+	cgx = @_get_random_int 1, @options.cell_width
+	cgy = @_get_random_int 1, @options.cell_height
+	local idx, ncgx, ncgy
+	found = false
+	local room, other_room
+	dir_to_check = 0
+	repeat
+	  dir_to_check = table.randomize {1, 3, 5, 7}
+	  repeat
+		found = false
+		idx = table.remove dir_to_check
+		ncgx = cgx + DIRS.EIGHT[idx][1]
+		ncgy = cgy + DIRS.EIGHT[idx][2]
+
+		if (ncgx > 0 and ncgx <= @options.cell_width) and (ncgy > 0 and ncgy <= @options.cell_height)
+		  room = @_rooms[cgx][cgy]
+		  if #room.connections > 0
+			break if room.connections[1][1] == ncgx and room.connections[1][2] == ncgy
+
+		  other_room = @_rooms[ncgx][ncgy]
+
+		  if #other_room.connections == 0
+			other_room.connections[] = {cgx, cgy}
+			@_connected_cells[] = {ncgx, ncgy}
+			cgx, cgy = ncgx, ncgy
+			found = true
+	  until #dir_to_check < 1 or found
+	until #dir_to_check < 1
+
+  _connect_unconnected_rooms: =>
+	{cell_width: cw, cell_height: ch} = @options
+
+	@_connected_cells[] = {cgx, cgy}
+	local room, other_room, valid_room
+	for i = 1, cw
+	  for j = 1, ch
+		room = @_rooms[i][j]
+
+		if #room.connections == 0
+		  dirs = table.randomize {1, 3, 5, 7}
+		  valid_room = false
+		  repeat
+			dir_idx = table.remove dirs
+			new_i = i + DIRS.EIGHT[dir_idx][1]
+			new_j = j + DIRS.EIGHT[dir_idx][2]
+
+			if new_i > 0 and new_i <= cw and new_j > 0 and new_j <= ch
+			  other_room = @_rooms[new_i][new_j]
+			  valid_room = true
+
+			  break if #other_room.connections > 0
+
+			  for k = 1, #other_room.connections
+				if other_room.connections[k][1] == i and other_room.connections[k][2] == j
+				  valid_room = false
+				  break
+
+			  break if valid_room
+		  until #dirs < 1
+		  if valid_room
+			room.connections[] = {other_room.cellx, other_room.celly}
+		  else
+			io.write'-- unable to connect room'
+			io.flush!
+
+  _create_random_room_connections: =>
+
+  _create_rooms: =>
+	w, h, cw, ch = @width, @height, @options.cell_width, @options.cell_height
+	cwp, chp = floor(w/cw), floor(h/ch)
+
+	local roomw, roomh
+	import room_width, room_height from @options
+	local sx, sy, other_room
+
+	for i = 1, cw
+	  for j = 1, ch
+		sx = cwp*(i-1)
+		sy = chp*(j-1)
+		sx = max sx, 2
+		sy = max sy, 2
+		roomw = @_get_random_int room_width[1], room_width[2]
+		roomh = @_get_random_int room_height[1], room_height[2]
+
+		if j > 1
+		  other_room = @_rooms[i][j-1]
+		  sy += 1 while sy - (other_room.y + other_room.height) < 3
+
+		if i > 1
+		  other_room = @_rooms[i-1][j]
+		  sx += 1 while sx - (other_room.x + other_room.width) < 3
+
+		sxo = round @_get_random_int(0, cwp-roomw)/2
+		syo = round @_get_random_int(0, chp-roomh)/2
+		while sx + sxo + roomw > w
+		  if sxo > 0
+			sxo -= 1
+		  else
+			roomw -= 1
+
+		while sy + syo + roomh > h
+		  if syo > 0
+			syo -= 1
+		  else
+			roomh -= 1
+
+		sx += sxo
+		sy += syo
+
+		with @_rooms[i][j]
+		  .x = sx
+		  .y = sy
+		  .width = roomw
+		  .height = roomh
+
+		for ii = sx, sx + roomw - 1
+		  for jj = sy, sy + roomh - 1
+			@map[ii][jj] = FLOOR
+
+  _get_wall_position: (room, dir) =>
+	local rx, ry, door
+	switch dir
+	  when 1, 3
+		max_rx = room.x + room.width - 1
+		rx = @_get_random_int room.x, max_rx > room.x and max_rx or room.x
+		switch dir
+		  when 1
+			ry = room.y - 2
+			door = ry + 1
+		  when 3
+			ry = room.y + room.height + 1
+			door = ry - 1
+		@map[rx][door] = FLOOR
+		@_doors[] =
+		  x: rx
+		  y: door
+	  when 2, 4
+		max_ry = room.y + room.height - 1
+		ry = @_get_random_int room.y, max_ry > room.y and max_ry or room.y
+		switch dir
+		  when 2
+			rx = room.x + room.width + 1
+			door = rx - 1
+		  when 4
+			rx = room.x - 2
+			door = rx + 1
+		@map[door][ry] = FLOOR
+		@_doors[] =
+		  x: door
+		  y: ry
+	{rx, ry}
+
+  _draw_corridor: (pos_start, pos_end) =>
+	xo, yo = pos_end[1] - pos_start[1], pos_end[2] - pos_start[2]
+	xpos, ypos = pos_start[1], pos_start[2]
+	moves = {}
+	xabs, yabs = abs(xo), abs(yo)
+	first_half = @rng\random!
+	second_half = 1 - first_half
+	xdir = xo > 0 and 3 or 7
+	ydir = yo > 0 and 5 or 1
+	if xabs < yabs
+	  temp_dist = ceil yabs * first_half
+	  moves[] = {ydir, temp_dist}
+	  moves[] = {xdir, xabs}
+	  temp_dist = floor yabs * second_half
+	  moves[] = {ydir, temp_dist}
+	else
+	  temp_dist = ceil xabs * first_half
+	  moves[] = {xdir, temp_dist}
+	  moves[] = {ydir, yabs}
+	  temp_dist = floor xabs * second_half
+	  moves[] = {xdir, temp_dist}
+
+	dirs = DIRS.EIGHT
+	@map[xpos][ypos] = FLOOR
+	while #moves > 0
+	  move = table.remove moves
+	  if move and move[1] and move[1] < 9 and move[1] > 0
+		while move[2] > 0
+		  xpos += dirs[move[1]][1]
+		  ypos += dirs[move[1]][2]
+		  @map[xpos][ypos] = FLOOR
+		  move[2] -= 1
+
+  _create_corridors: =>
+	{cell_width: cw, cell_height: ch} = @options
+	local room, connection, other_room, wall, other_wall
+
+	for i = 1, cw
+	  for j = 1, ch
+		room = @_rooms[i][j]
+		for k = 1, #room.connections
+		  connection = room.connections[k]
+		  other_room = @_rooms[connection[1]][connection[2]]
+
+		  if other_room.cellx > room.cellx
+			wall = 2
+			other_wall = 4
+		  elseif other_room.cellx < room.cellx
+			wall = 4
+			other_wall = 2
+		  elseif other_room.celly > room.celly
+			wall = 3
+			other_wall = 1
+		  elseif other_room.celly < room.celly
+			wall = 1
+			other_wall = 3
+		  
+		  pos = @_get_wall_position room, wall
+		  pos2 = @_get_wall_position other_room, other_wall
+		  @_draw_corridor pos, pos2

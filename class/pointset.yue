@@ -1,0 +1,48 @@
+--an unordered collection of unique value-pairs
+
+hash = (x, y) -> x and y * 0x4000000 + x or false --26-bit x and y
+iterate = (i) =>
+  i -= 2
+  return i, @peek i if i > 0
+
+class PointSet
+  new: => @_index = {}
+
+  _rng: require'class.rng'
+  
+  find: (x, y) => @_index[hash(x, y)]
+
+  peek: (i) => @[i], @[i + 1]
+
+  poke: (i, x, y) =>
+	@_index[hash(@peek i)] = nil
+	@_index[hash x, y] = i
+	@_index[false] = nil --???
+	@[i], @[i + 1] = x, y
+	@
+
+  push: (x, y) =>
+	key = hash x, y
+	i = @_index[key]
+	return nil, i if i
+	i = #self + 1
+	@poke i, x, y
+	@_index[key] = i
+	@_index[false] = nil --???
+	i
+
+  pluck: (i) =>
+	last, x, y = #@ - 1, @peek i
+	@poke(i, @peek last)\poke last
+	@_index[hash x, y] = nil
+	@_index[hash(@peek i)] = i
+	@_index[false] = nil --???
+	x, y
+
+  prune: (x, y) =>
+	i = @find x, y
+	i and @pluck i
+
+  each: => iterate, @, #@ + 1
+
+  get_random: => @peek @_rng\random(1, #@ / 2) * 2 - 1

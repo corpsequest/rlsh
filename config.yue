@@ -1,5 +1,5 @@
 config =
-	ADDRESS: 	'127.0.0.1'
+	ADDRESS: 	'76.129.26.50'
 	PORT: 		'7734'
 
 config

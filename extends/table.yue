@@ -1,0 +1,51 @@
+import floor from math
+
+RNG = require'class.rng'
+
+with table
+  .random = (t) ->
+	assert istable t
+	return nil if #t == 0
+	return t[floor(RNG\random #t)]
+  .randomi = (t) ->
+	assert istable t
+	return nil if #t == 0
+	return floor(RNG\random #t)
+  .randomize = (t) ->
+	assert istable t
+	result = {}
+	result[] = .remove t, .randomi t while #t > 0
+	result
+  .slice = (t, start=1, stop=#t) ->
+	assert istable t
+	n = #t
+	if stop < 0
+	  stop += n + 1
+	else if stop > n
+	  stop = n
+	if start < 0 or start > n
+	  return {}
+	result = {}
+	k = 1
+	for i = start, stop
+	  result[k] = t[i]
+	  k += 1
+	result
+  .index_of = (t, value) ->
+	assert istable t
+	if t
+	  for i = 1, #t
+		return i if t[i] == value
+	return .index_of_table t, value if istable value
+	0
+  .index_of_table = (t, value) ->
+	assert istable t
+	return 0 unless istable value
+	for k, v in ipairs t
+	  if #v == #value
+		match = true
+		for i = 1, #v
+		  if v[i] != value[i]
+			match = false
+			break
+		return k if match

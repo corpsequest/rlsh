@@ -1,20 +1,12 @@
 import sin, max from math
 with string
-    --function that applies color tags
-        --like this: [color=#FF0000]
-    --each time it does it increments a value 
-        --that 'shifts' the rainbow forward a little
-    --this way each time the function is called each frame
-        --the rainbow will move
-    rainbow_tick = 0
-
-    .interrupt = (str, len) ->
-        if #str > len then
-            return str\sub 1, len .. "..."
+    .interrupt = (len) =>
+        if #@ > len then
+            return @sub 1, len .. "..."
         else
-            return str
+            return @
 
-    .chop = (str, len) -> return str\sub(1, len), str\sub(len+1, #str)
+    .chop = (len) => return @sub(1, len), @sub(len+1, #@)
 
     .slice = (str, start=0, stop=#str) -> --start and stop are inclusive
         len = #str
@@ -23,3 +15,34 @@ with string
         if stop < 0 then stop = len + stop
         if stop > len then stop = len
         return str\sub start, stop
+
+	.capitalize = (str) => @sub(1,1)\upper! .. @sub 2
+
+	.lpad = (c='0', n=2) =>
+	  s = ''
+	  s ..= c while #s < n-#@
+	  s .. @
+
+	.rpad = (c='0', n=2) =>
+	  s = ''
+	  s ..= c while #s < n-#@
+	  @ .. s
+
+	.split = (delim, maxNb=0) =>
+	  return {@} if @find delim == nil
+	  result = {}
+	  if delim == '' or not delim
+		result[i] = @sub i,i for i in 1..#@
+		return result
+	  maxNb = math.max 0, maxNb
+	  pat = "(.-)" .. delim .. "()"
+	  nb = 0
+	  lastPos = 1
+	  for part, pos in @gmatch pat
+		nb += 1
+		result[nb] = part
+		lastPos = pos
+		if nb == maxNb then break
+	  unless nb == maxNb
+		result[nb+1] = @sub lastPos
+	  return result

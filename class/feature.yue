@@ -1,0 +1,10 @@
+class Feature using Accessors
+  new: 				=> @rng = RNG
+  is_valid: 		=>
+  create: 			=>
+  create_random_at: =>
+  debug: 			=>
+
+  @accessor 'rng',
+	get: => @_rng
+	set: (@_rng) =>

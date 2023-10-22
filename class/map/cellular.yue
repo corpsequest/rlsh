@@ -1,0 +1,138 @@
+import abs, ceil, floor from math
+
+FLOOR, WALL = 0, 1
+
+defaults =
+  born: {5, 6, 7, 8}
+  survive: {4, 5, 6, 7, 8}
+  topology: 8
+  connected: false
+  minimum_zone_area: 8
+
+class Cellular extends require'class.map'
+  new: (width, height, @options={}) =>
+	super width, height
+	@options[k] ??= v for k, v in pairs defaults
+	t = @options.topology
+	assert t in {4, 8}, "topology must be 8 or 4"
+	@_dirs = switch t
+	  when 4 then DIRS.FOUR
+	  when 8 then DIRS.EIGHT
+	@randomize .5
+
+  randomize: (prob) =>
+	@_map = @fill FLOOR unless @_map
+	for i = 1, @width
+	  for j = 1, @height
+		@_map[i][j] = if @rng\random! < prob
+		  WALL
+		else
+		  FLOOR
+	@
+
+  set: (x, y, val) => @_map[x][y] = val
+
+  create: (callback) =>
+	new_map = @fill FLOOR
+	import born, survive from @options
+	changed = false
+
+	for j=1, @height
+	  for i=1, @width
+		cur = @_map[i][j]
+		ncount = @_get_neighbors i, j
+		if cur > 0 and table.index_of(survive, ncount) > 0
+		  new_map[i][j] = WALL
+		elseif cur <= 0 and table.index_of(born, ncount) > 0
+		  new_map[i][j] = WALL
+		unless changed
+		  if new_map[i][j] != @_map[i][j]
+			changed = true
+	@_map = new_map
+
+	@_complete_maze! if @options.connected
+	if callback
+	  for i = 1, @width
+		for j = 1, @height
+		  callback i, j, @_map[i][j]
+	@changed = changed
+
+  _get_neighbors: (cx, cy) =>
+	rst = 0
+	for i = 1, #@_dirs
+	  dir = @_dirs[i]
+	  x, y = cx + dir[1], cy + dir[2]
+	  if x > 0 and x <= @width and y > 0 and y <= @height
+		rst += 1 if @_map[x][y] == 1
+	rst
+
+  _complete_maze: =>
+	--collect all zones
+	zones = {}
+	for i = 1, @width
+	  for j = 1, @height
+		@_add_zone_from i, j, zones if @_map[i][j] == FLOOR
+	--overwrite zones below a certain size
+	  --and connect zones
+	for i = 1, #zones
+	  if #zones[i] < @options.minimum_zone_area
+		@_map[v[1]][v[2]] = WALL for v in *zones[i]
+	  else
+		rx = @rng\random 1, @width
+		ry = @rng\random 1, @height
+		while @_map[rx][ry] != WALL and @_map[rx][ry] != i
+		  rx = @rng\random 1, @width
+		  ry = @rng\random 1, @height
+		t = zones[i][@rng\random 1, #zones[i]]
+		@_tunnel t[1], t[2], rx, ry
+		--re-establish floors as 0 for this zone
+		@_map[v[1]][v[2]] = FLOOR for v in *zones[i]
+
+  _add_zone_from: (x, y, zones) =>
+	dirs = @_dirs
+	todo = {{x, y}}
+	zones[] = {}
+	zone_id = #zones + 1
+	@_map[x][y] = zone_id
+	zones[#zones][] = {x, y}
+	while #todo > 0
+	  t = table.remove todo
+	  tx, ty = t[1], t[2]
+	  for dir in *dirs
+		nx, ny = tx + dir[1], ty + dir[2]
+		if @_map[nx] and @_map[nx][ny] and @_map[nx][ny] == FLOOR
+		  @_map[nx][ny] = zone_id
+		  zones[#zones][] = {nx, ny}
+		  todo[] = {nx, ny}
+
+  _tunnel: (sx, sy, ex, ey) =>
+	xo, yo = ex - sx, ey - sy
+	xpos, ypos = sx, sy
+	moves = {}
+	xabs, yabs = abs xo, abs yo
+	first_half = @rng\random!
+	second_half = 1 - first_half
+	xdir, ydir = xo > 0 and 3 or 7, yo > 0 and 5 or 1
+	if xabs < yabs
+	  temp_dist = ceil yabs*first_half
+	  moves[] = {ydir, temp_dist}
+	  moves[] = {xdir, xabs}
+	  temp_dist = floor yabs*second_half
+	  moves[] = {ydir, temp_dist}
+	else
+	  temp_dist = ceil xabs*first_half
+	  moves[] = {xdir, temp_dist}
+	  moves[] = {ydir, yabs}
+	  temp_dist = floor xabs*second_half
+	  moves[] = {xdir, temp_dist}
+	
+	dirs = DIRS.EIGHT
+	@_map[xpos][ypos] = FLOOR
+	while #moves > 0
+	  move = table.remove moves
+	  if move and move[1] and move[1] < 9 and move[1] > 0
+		while move[2] > 0
+		  xpos += dirs[move[1]][1]
+		  ypos += dirs[move[1]][2]
+		  @_map[xpos][ypos] = FLOOR
+		  move[2] -= 1

@@ -1,0 +1,4 @@
+import 'class.turf' as Turf
+
+class Wall extends Turf
+  glyph: 0x23 -- #

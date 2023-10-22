@@ -1,2 +1,2 @@
-#!/usr/bin/env fish
+#!/usr/bin/env sh
 luajit -e "require('yue')'server'"
