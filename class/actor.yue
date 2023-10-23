@@ -1,0 +1,26 @@
+class Actor using Accessors
+    @🧷 'position',
+        get: => @x, @y
+        set: (coords) =>
+            @x = coords[1]
+            @y = coords[2]
+    
+    @🧷 'pos',
+        get: => @position
+        set: (@position) =>
+
+    @🧷 'x',
+        get: => @_x
+        set: (@_x) =>
+    
+    @🧷 'y',
+        get: => @_y
+        set: (@_y) =>
+    
+    @🧷 'glyph',
+        get: => @_glyph
+        set: (@_glyph) =>
+
+    @🧷 'color',
+        get: => @_color
+        set: (@_color) =>

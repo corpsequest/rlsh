@@ -2,33 +2,17 @@ import random from math
 class Object using Accessors
     parent_of: isinstance
 
-	x: 0
-	y: 0
-
-    glyph: 0x3F -- ?
-
-    color: Color.White
-
-    move_to: (where) =>
-        error! if where == @location
-        error! unless where? and where.accept? and where\accept @
-        @location._contents[@] = nil if @location? and @location._contents?
-        @_location = where
-        where._contents[@] = true
-
-    @accessor 'location'
-        get: => @_location
-        set: (where) => @move_to where
-
-    @accessor 'turf'
-        get: =>
-            site = @
-            site = site.location until @parent == Turf
-            site
-    
     @accessor 'parent'
         get: =>
             if isclass @
                 @__parent
             else
                 @@__parent
+
+    @accessor 'name',
+        get: => @_name or @@__name
+        set: (@_name) =>
+
+    @accessor 'description',
+        get: => @_description or "Huh."
+        set: (@_description) =>

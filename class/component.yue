@@ -1,0 +1,14 @@
+import 'class.object' as Object
+
+class Component extends Object
+    requirements: {}
+
+    new: (actor) =>
+
+    check_requirements: (actor) =>
+        found = {}
+        for comp in *actor.components
+            for req in *@requirements
+                found[] = comp if comp\isinstance req
+        return true if #found == #@requirements
+        false

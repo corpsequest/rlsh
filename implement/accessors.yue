@@ -56,4 +56,6 @@ Props =
     else
       rawset @__base, "__setter", [name]: set
 
+Props.🧷 = Props.accessor
+
 export default Props
