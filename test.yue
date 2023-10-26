@@ -1,0 +1,3 @@
+with fuck = io.read!
+  print fuck
+  print'goodbye'

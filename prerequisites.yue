@@ -33,7 +33,7 @@ EPOCH	= socket.gettime!
 time	= -> socket.gettime! - EPOCH
 
 DIRS =
-	EIGHT:
+  EIGHT:
 		* {0, -1} 	--NORTH
 		* {1, -1} 	--NORTHEAST
 		* {1, 0} 		--EAST
