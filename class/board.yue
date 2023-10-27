@@ -6,7 +6,7 @@ iterate = (i) =>
 	x, y = @_points\peek i
 	return i, x, y, @_values[i]
 
-class Board using Accessors
+export default class Board using Accessors
   new: => @clear!
 
   clear: =>
@@ -39,3 +39,5 @@ class Board using Accessors
   get_random: =>
 	x, y = @_points\get_random!
 	x, y, @get_cell x, y
+
+bitser.registerClass Board

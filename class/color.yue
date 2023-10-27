@@ -1,63 +1,84 @@
-import abs, clamp,  floor, min, max from math
-class Color
-   new: (@r, @g, @b) =>
-      for x in *{'r', 'g', 'b'}
-         @[x] = floor @[x]
-         @[x] /= 255
-      max_val = max(@r, @g, @b)
-      min_val = min(@r, @g, @b)
-      @l = (max_val + min_val) / 2
+import abs, clamp, floor, min, max from math
 
-      if max_val == min_val
-         @h, @s = 0, 0 -- achromatic
+export default class Color
+  new: (@r, @g, @b, @a) =>
+    for x in *{'r', 'g', 'b'}
+      @[x] = floor @[x]
+      @[x] /= 255
+    max_val = max(@r, @g, @b)
+    min_val = min(@r, @g, @b)
+    @l = (max_val + min_val) / 2
+
+    if max_val == min_val
+      @h, @s = 0, 0 -- achromatic
+    else
+      d = max_val - min_val
+      @s = @l > 0.5 and d / (2 - max_val - min_val) or d / (max_val + min_val)
+      if max_val == @r
+        @h = (@g - @b) / d + (@g < @b and 6 or 0)
+      elseif max_val == @g
+        @h = (@b - @r) / d + 2
       else
-         d = max_val - min_val
-         @s = @l > 0.5 and d / (2 - max_val - min_val) or d / (max_val + min_val)
-         if max_val == @r
-            @h = (@g - @b) / d + (@g < @b and 6 or 0)
-         elseif max_val == @g
-            @h = (@b - @r) / d + 2
-         else
-            @h = (@r - @g) / d + 4
-         @h = @h / 6
-         @[x] *= 255 for x in *{'r', 'g', 'b'}
+        @h = (@r - @g) / d + 4
+      @h = @h / 6
+      @[x] *= 255 for x in *{'r', 'g', 'b'}
 
-   @HSV: (h, s=1, v=1) ->
-      h = h % 360
-      c = v * s
-      x = c * (1 - abs((h / 60) % 2 - 1))
-      m = v - c
-      r, g, b = if h < 60
-         c, x, 0
-      elseif h < 120
-         x, c, 0
-      elseif h < 180
-         0, c, x
-      elseif h < 240
-         0, x, c
-      elseif h < 300
-         x, 0, c
-      else
-         c, 0, x
-      r, g, b = (r + m) * 255, (g + m) * 255, (b + m) * 255
-      @ r, g, b
+  @HSV: (h, s=1, v=1) ->
+    h = h % 360
+    c = v * s
+    x = c * (1 - abs((h / 60) % 2 - 1))
+    m = v - c
+    r, g, b = if h < 60
+      c, x, 0
+    elseif h < 120
+      x, c, 0
+    elseif h < 180
+      0, c, x
+    elseif h < 240
+      0, x, c
+    elseif h < 300
+      x, 0, c
+    else
+      c, 0, x
+    r, g, b = (r + m) * 255, (g + m) * 255, (b + m) * 255
+    @ r, g, b
 
-   alpha: 255
+  @BlendAlpha: (sc, sa, dc, da, out) -> ((sc * sa) + (dc * da * (255 - sa) / 255)) / out
 
-   reset: "[/color]"
+  @Lerp: (src, dst, interp) =>
+    oa = src.a + dst.a * (255 - src.a) / 255
+    return dst if oa == 0 --avoid division by zero
+    sa = src.a * interp
+    import BlendAlpha from Color
+    Color BlendAlpha(src.r, sa, dst.r, dst.a, oa),
+      BlendAlpha(src.g, sa, dst.g, dst.a, oa),
+      BlendAlpha(src.b, sa, dst.b, dst.a, oa),
+      oa
 
-   <tostring>: => "[color=#{floor @r},#{floor @g},#{floor @b}]"
+  @BlendColor: (d, s, fn) ->
+      Color clamp(fn(d.r, s.r), 0, 255),
+        clamp(fn(d.g, s.g), 0, 255),
+        clamp(fn(d.b, s.b), 0, 255),
+        d.a
 
-   darken: (amt=.05) =>
-      amt = clamp amt, 0, 1
-      ch *= 1 - amt for ch in *{'r', 'g', 'b'}
-      @
+  alpha: 255
 
-   lighten: (amt=.05) =>
-      amt = clamp amt, 0, 1
-      ch += (255 - ch) * amt for ch in *{'r', 'g', 'b'}
-      @
+  reset: "[/color]"
 
-   fade: (amt=1) =>
-      amt = clamp amt, 0, 255
-      @
+  <tostring>: => "[color=#{floor @r},#{floor @g},#{floor @b}]"
+
+  darken: (amt=.05) =>
+    amt = clamp amt, 0, 1
+    ch *= 1 - amt for ch in *{'r', 'g', 'b'}
+    @
+
+  lighten: (amt=.05) =>
+    amt = clamp amt, 0, 1
+    ch += (255 - ch) * amt for ch in *{'r', 'g', 'b'}
+    @
+
+  fade: (amt=1) =>
+    amt = clamp amt, 0, 255
+    @
+
+bitser.registerClass Color

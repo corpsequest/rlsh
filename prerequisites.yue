@@ -1,3 +1,5 @@
+require'extends'
+
 global *
 import 'utf8'
 import 'bit'
@@ -5,51 +7,8 @@ import 'inspect'
 import 'socket'
 import 'bitser'
 import 'config'
-
 import 'implement.accessors' as Accessors
 import 'implement.commands' as Commands
-
-import 'class.vector2' as Vec2
-import 'class.board' as Board
-import 'class.color' as Color
-import 'class.turf' as Turf
-import 'class.turf.floor' as Floor
-import 'class.turf.wall' as Wall
-
-Color[k] = v for k, v in pairs require'colors'
-
-bitser.registerClass cls for cls in *{
-  Vec2
-  Board
-  Color
-  Turf
-	Floor
-	Wall
-}
-
-math.randomseed os.time!
-
-EPOCH	= socket.gettime!
-time	= -> socket.gettime! - EPOCH
-
-DIRS =
-  EIGHT:
-		* {0, -1} 	--NORTH
-		* {1, -1} 	--NORTHEAST
-		* {1, 0} 		--EAST
-		* {1, 1} 		--SOUTHEAST
-		* {0, 1} 		--SOUTH
-		* {-1, 1} 	--SOUTHWEST
-		* {-1, 0} 	--WEST
-		* {-1, -1}	--NORTHWEST
-  FOUR:
-		* {0, -1} 	--UP
-		* {1, 0} 		--RIGHT
-		* {0, 1} 		--DOWN
-		* {-1, 0} 	--LEFT
-
-require'extends'
-
 TK_0 = 39
 TK_1 = 30
 TK_2 = 31

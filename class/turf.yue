@@ -1,9 +1,9 @@
 import floor from math
 import 'class.object' as Object
 
-class Turf extends Object
+export default class Turf extends Object
 	new: => @_contents = {}
-	
+
 	accept: (what) => true unless what in @contents
 
 	@accessor 'contents',
@@ -19,15 +19,15 @@ class Turf extends Object
 		  with top = @contents[#@contents]
 			g = .glyph
 			c = .color
-				
+
 			g = g top if type(g) == 'function'
 			c = c top if type(c) == 'function'
-				
+
 			if type(c) == 'table'
 			  c = "#{floor c.r},#{floor c.g},#{floor c.b}"
 		TTY\color c
 		TTY\put @x - 1, @y - 1, g
-	
+
 	lmb: =>
 		return unless #@contents > 0
 		@contents[#@contents]\lmb?!
@@ -35,3 +35,5 @@ class Turf extends Object
 	rmb: =>
 		return unless #@contents > 0
 		@contents[#@contents]\rmb?!
+
+bitser.registerClass Turf

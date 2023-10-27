@@ -1,6 +1,6 @@
 import abs, atan2, floor, ceil, sin, cos, pi, sqrt from math
 
-class Vector2 using Accessors
+export default class Vector2 using Accessors
     @accessor 'magnitude',
         get: => sqrt(@magnitude_sq)
         set: (mag) =>
@@ -72,17 +72,17 @@ class Vector2 using Accessors
         @
 
     distanceFromSquare: (v) => (v.x - @x)^2 + (v.y - @y)^2
-    
+
     distanceFrom: (v) => @distanceFromSquare(v)^.5
 
     dot: (v) => @x * v.x + @y * v.y
-    
+
     perpDot: (v) => @x * v.x - @y * v.y
-    
+
     abs: =>
         @x, @y = abs(@x), abs(@y)
         @
-    
+
     toPolar: (angle, len=1) =>
         with @
             .x = cos(angle) * len
@@ -130,3 +130,5 @@ class Vector2 using Accessors
                 return @@ @x/v.x, @y/v.y
     <eq>: (v) => @x == v.x and @y == v.y
     <pow>: (power) => @@ @x^power, @y^power
+
+bitser.registerClass Vector2

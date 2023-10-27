@@ -1,0 +1,184 @@
+import 'BearLibTerminal' as TTY
+
+import 'rlsh'
+import ALIGNS, COLORS, FLAGS, root from rlsh
+
+import clamp from math
+
+import 'class.color' as Color
+import \BlendColor from Color
+
+multiply  = (d, s) -> d * s / 255
+lighten   = (d, s) -> max d, s
+darken    = (d, s) -> min d, s
+screen    = (d, s) -> 255 - (255 - d) * (255 - s) / 255
+add       = (d, s) -> d + s
+burn      = (d, s) -> d + s - 255
+
+overlay   = (d, s) -> if s <= 128
+  2 * s * d / 255
+else
+  255 - 2 * (255 - s) * (255 - d) / 255
+
+rgb_dodge = (d, s) -> if d == 255
+  255
+else
+  255 * s / (255 - d)
+
+rgb_burn  = (d, s) -> if d == 0
+  0
+else
+  255 - (255 * (255 - d)) / FLAGS
+
+export default class Screen using Accessors
+  @accessor 'width',
+    get: => @w
+    set: (@w) =>
+  @accessor 'height',
+    get: => @h
+    set: (@h) =>
+  @accessor 'alignment',
+    get: => @_alignment or TTY.alignment
+    set: (@_alignment) =>
+  @accessor 'bg_flag',
+    get: @_bg_flag or TTY.bg_flag
+    set: (@_bg_flag) =>
+
+  new: (@w=80, @h=24) =>
+    assert @w >= 0, "Screen can't construct with negative argument 1 (width); got #{@w}"
+    assert @h >= 0, "Screen can't construct with negative argument 2 (height); got #{@h}"
+    @fg, @bg = COLORS.White, COLORS.Black
+    if root
+      @alignment  = root.alignment
+      @bg_flag    = root.bg_flag
+    @clear!
+
+  clear: =>
+    mt =
+      char: ' '
+      fg: {...Color!, ...@fg}
+      bg: {...Color!, ...@bg}
+    @tiles = [{...mt} for i=1, @width * @height]
+
+  close: =>
+    @closed!
+    rlsh.root = nil if @ == root
+
+  closed: =>
+
+  resize: (@w, @h) =>
+
+  @Close: -> root?\close!
+
+  @BlitCell: (src, dst, fg_alpha=1, bg_alpha=1, key_color=Color(255,0,255)) ->
+    if  key_color.r == src.bg.r
+    and key_color.g == src.bg.g
+    and key_color.b == src.bg.b
+      return dst
+
+    fg_alpha *= src.fg.a / 255
+    bg_alpha *= src.bg.a / 255
+
+    if  fg_alpha > 254.5 / 255
+    and bg_alpha > 254.5 / 255
+      return src
+
+    with out = Color dst.r, dst.g, dst.b, dst.a
+      .bg = Color.Lerp .bg, src.bg, bg_alpha
+      if src.char == ' '
+        --source is space
+          --keep the current glyph
+        .fg = Color.Lerp .fg, src.bg, bg_alpha
+      elseif .char == ' '
+        --destination is space
+          --use the glyph from source
+        .ch = src.ch
+        .fg = Color.Lerp .bg, src.fg, fg_alpha
+      elseif .char == src.char
+        .fg = Color.Lerp .fg, src.fg, fg_alpha
+      else
+        --pick the glyph
+          --based on fg_alpha
+        if fg_alpha < .5
+          .fg = Color.Lerp .fg, .bg, fg_alpha * 2
+        else
+          .char = src.char
+          .fg = Color.Lerp .bg, src.fg, (fg_alpha - .5) * 2
+
+  @BlitKeyColor: (src, xs, ys, dst, xd, yd, ws, hs, fga=1, bga=1, key_color=Color(255,0,255)) ->
+    return unless src and dst
+    return if ws <= 0 or hs <= 0
+    if xd + ws < 0
+    or yd + hs < 0
+    or xd >= dst.w
+    or yd >= dst.h
+      return
+    for cx = xs, xs + ws
+      for cy = yx, ys + hs
+        dx = cx - xs + xd
+        dy = cy - ys + yd
+        continue unless cx == clamp(cx, 0, src.w) and cy == clamp(cy, 0, src.h)
+        continue unless dx == clamp(dx, 0, dst.w) and dy == clamp(dy, 0, dst.h)
+        dst.tiles[dy * dst.w + dx] = Screen.BlitCell src.tiles[xy * src.w + cx],
+          dst.tiles[dy * dst.w + dx],
+          fga,
+          bga,
+          key_color
+
+  @Blit: (src, xs, ys,
+    dst, xd, yd,
+    ws, hs,
+    fga, bga) -> @BlitKeyColor src, xs, ys, dst, xd, yd, ws, hs, fga, bga, src.key_color and src.key_color or nil
+
+  put: (x, y, c, f) =>
+    return unless x == clamp(x, 0, @w) and y == clamp(y, 0, @h)
+    with @get x, y
+      .char = c
+      .fg = {...Color!, ...@fg}
+      .bg = {...Color!, ...@bg}
+
+  get: (x, y) => @tiles[y * @w + x]
+
+  get_char: (x, y) =>
+    return ' ' unless x == clamp(x, 0, @w) and y == clamp(y, 0, @h)
+    @get(x, y).char
+
+  get_fg: (x, y) =>
+    return COLORS.White unless x == clamp(x, 0, @w) and y == clamp(y, 0, @h)
+    @get(x, y).fg
+
+  get_bg: (x, y) =>
+    return COLORS.Black unless x == clamp(x, 0, @w) and y == clamp(y, 0, @h)
+    @get(x, y).bg
+
+  set_char: (x, y, c) =>
+    return unless x == clamp(x, 0, @w) and y == clamp(y, 0, @h)
+    @get(x, y).char = c
+
+  set_fg: (x, y, col) =>
+    return unless x == clamp(x, 0, @w) and y == clamp(y, 0, @h)
+    with col
+      @get(x, y).fg = Color .r, .g, .b
+
+  set_bg: (x, y, col, f=FLAGS.BG.DEFAULT, a=col.a) =>
+    import bg from @get(x, y)
+    f = @bg_flag if f == FLAGS.BG.DEFAULT
+    bg = switch f
+      when FLAGS.BG.SET       then Color col.r, col.g, col.b
+      when FLAGS.BG.MULTIPLY  then BlendColor bg, col, multiply
+      when FLAGS.BG.LIGHTEN   then BlendColor bg, col, lighten
+      when FLAGS.BG.DARKEN    then BlendColor bg, col, darken
+      when FLAGS.BG.SCREEN    then BlendColor bg, col, screen
+      when FLAGS.BG.RGB_DODGE then BlendColor bg, col, rgb_dodge
+      when FLAGS.BG.RGB_BURN  then BlendColor bg, col, rgb_burn
+      when FLAGS.BG.ADD       then BlendColor bg, col, add
+      when FLAGS.BG.ADDA      then
+        Color clamp bg.r + a * col.r / 255,
+          clamp bg.g + a * col.g,
+          clamp bg.b + a * col.b
+      when FLAGS.BG.BURN      then BlendColor bg, col, burn
+      when FLAGS.BG.OVERLAY   then BlendColor bg, col, overlay
+      when FLAGS.BG.ALPHA     then 
+        --sometimes `a` isn't col.a
+        col.a = a
+        Color.Lerp bg, col, 1

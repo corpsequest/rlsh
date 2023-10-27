@@ -41,45 +41,49 @@ class CLIENT using Accessors
   printf: (x, y, ...)	    => @print x, y, ...
   printyf: (x, y, x2, y2, a, ...) 	=> @print x, y, x2, y2, a, ...
   measure: (s)	    		=> terminal.measure s --vararg: num width, num height
-  color: (c)		    	=> terminal.color c
-  bcolor: (c)		    	=> terminal.bkcolor c
 
   @accessor 'title',
-	get: => @_title,
-	set: (@_title) => @set"window.title = '#{@title}'"
+	  get: => @_title
+	  set: (@_title) => @set"window.title = '#{@title}'"
   @accessor 'typeface',
-	get: => @_typeface,
-	set: (@_typeface) => @set"font: #{@typeface}, size=#{@font_size};"
+	  get: => @_typeface
+	  set: (@_typeface) => @set"font: #{@typeface}, size=#{@font_size};"
   @accessor 'font_size',
-	get: => @_font_size,
-	set: (@_font_size) => @set"font: #{@typeface}, size=#{@font_size};"
+		-- get: => @_font_size
+    -- set: (@_font_size) => @set"font: #{@typeface}, size=#{@font_size};"
   @accessor 'cursor',
-	get: => @_cursor
-	set: (@_cursor) => @inbuf, @enbuf = @textbuf\sub(1, @cursor), @textbuf\sub(@cursor + 1)
+    get: => @_cursor
+    set: (@_cursor) => @inbuf, @enbuf = @textbuf\sub(1, @cursor), @textbuf\sub(@cursor + 1)
   @accessor 'width',
-	get: => @state TK_WIDTH
+    get: => @state TK_WIDTH
   @accessor 'height',
-	get: => @state TK_HEIGHT
+    get: => @state TK_HEIGHT
   @accessor 'W',
-	get: => @width
+    get: => @width
   @accessor 'H',
-	get: => @height
+    get: => @height
   @accessor 'cell_width',
-	get: => terminal.state TK_CELL_WIDTH
+    get: => terminal.state TK_CELL_WIDTH
   @accessor 'cell_height',
-	get: => terminal.state TK_CELL_HEIGHT
+    get: => terminal.state TK_CELL_HEIGHT
   @accessor 'cellW',
-	get: => @cell_width
+    get: => @cell_width
   @accessor 'cellH',
-	get: => @cell_height
+    get: => @cell_height
+  @accessor 'color',
+    get: => terminal.state TK_COLOR
+    set: (c) => terminal.color c
+  @accessor 'bkcolor',
+    get: => terminal.state TK_BKCOLOR
+    set: (c) => terminal.bkcolor c
   @accessor 'mouse_x',
-	get: => @state TK_MOUSE_X
+    get: => @state TK_MOUSE_X
   @accessor 'mouse_y',
-	get: => @state TK_MOUSE_Y
+    get: => @state TK_MOUSE_Y
   @accessor 'mouse_v2',
-	get: => Vec2 @state(TK_MOUSE_X), @state(TK_MOUSE_Y)
+    get: => Vec2 @state(TK_MOUSE_X), @state(TK_MOUSE_Y)
   @accessor 'has_input',
-	get: => terminal.has_input!
+    get: => terminal.has_input!
 
   frametime:	1/60
   frametimer: 0
@@ -87,165 +91,176 @@ class CLIENT using Accessors
   running: true
 
   new: (w = 80,
-	h = 25,
-	scale = 1,
-	@typeface = "resource/font/FSEX302.ttf",
-	@font_size = 24) =>
-	  @ticks	    = 0
-	  @steps	    = 0
+      h = 40,
+      scale = 1,
+      @typeface = "resource/font/FSEX302.ttf",
+      @font_size = 24) =>
+    @ticks	    = 0
+    @steps	    = 0
 
-	  @textbuf = ''
-	  @inbuf = ''
-	  @enbuf = ''
-	  @caret = '_'
+    @textbuf = ''
+    @inbuf = ''
+    @enbuf = ''
+    @caret = '_'
 
-	  @cursor	= 0
-	  @vursor	= 1
-	  @size		= 0
+    @cursor	= 0
+    @vursor	= 1
+    @size		= 0
 
-	  @history	= {}
+    @history	= {}
 
-	  @addr = ADDRESS
-	  @port = PORT
-	  @updr = 0.23
+    @addr = ADDRESS
+    @port = PORT
+    @updr = 0.23
 
-	  terminal.open!
-	  terminal.set"window: size=#{floor w}x#{floor h};"
-	  terminal.set"font: #{@typeface}, size=#{@font_size};"
-	  terminal.set"input.filter = [keyboard+, mouse+]"
-	  terminal.set"input.mouse-cursor = false;"
-	  
-	  @title = "rlsh@#{@addr}:#{@port}"
-	  
-	  TTY = @
-	  BOARD = Board!
+    terminal.open!
+    terminal.set"window: size=#{floor w}x#{floor h};"
+    terminal.set"font: #{@typeface}, size=#{@font_size};"
+    terminal.set"input.filter = [keyboard+, mouse+]"
+    terminal.set"input.mouse-cursor = false;"
 
-	  @refresh!
-	  @connect!
-	  @step! while @running
+    @title = "rlsh@#{@addr}:#{@port}"
+
+    TTY = @
+    BOARD = Board!
+
+    @root = Screen @width, @height
+
+    @screens =
+      board: Screen @width, @height - 15
+
+    @refresh!
+    @connect!
+    @step! while @running
 
   connect: =>
-	@socket = socket.udp!
-	@socket\setpeername @addr, @port
-	@socket\settimeout 0
-	@send 'login'
-	  
+    @socket = socket.udp!
+    @socket\setpeername @addr, @port
+    @socket\settimeout 0
+    @send 'login'
+
   disconnect: =>
-	@send 'logout'
-	@socket\close!
-	print '* disconnected'
+    @send 'logout'
+    @socket\close!
+    print '* disconnected'
 
   send: (cmd, data={}) =>
-	data._cmd = cmd
-	@socket\send bitser.dumps data
+    data._cmd = cmd
+    @socket\send bitser.dumps data
 
   update: (dt) =>
-	--ease.update dt
-	@ticks += dt
-	@caret = (time! % .6 < .3) and 0x25D6 or 0x20
+    --ease.update dt
+    @ticks += dt
+    @caret = (time! % .6 < .3) and 0x25D6 or 0x20
 
-	if @ticks > @updr
-	  @ticks -= @updr
-	  @update_countdown ??= 10
-	  @update_countdown -= 1
-	  if @update_countdown < 0
-		@send 'update'
-		@update_countdown = 10
+    if @ticks > @updr
+      @ticks -= @updr
+      @update_countdown ??= 10
+      @update_countdown -= 1
+      if @update_countdown < 0
+        @send 'update'
+        @update_countdown = 10
 
-	data, _error = @socket\receive!
-	while data
-	  data = bitser.loads data
-	  local _cmd
-	  if type(data) == 'string'
-		_cmd = data
-	  else
-		import _cmd from data
-	  switch _cmd
-		when 'batch'
-		  @timeouts = 0
-		  import cells from data
-		  for turf in *cells
-			import x, y from turf
-			our_turf = BOARD\get_cell x, y
-			unless our_turf
-			  unless istable turf
-				turf = switch turf
-				  when FLOOR 	then Floor!
-				  when WALL 	then Wall!
-			  BOARD\set_cell x, y, turf
-			elseif istable turf
-			  our_turf[k] = v for k, v in pairs turf
-		when 'handshake'
-		  print '* connected to', @addr, @port
-		  @send 'handshake'
-		when 'pong'
-		  @ping = false
-	  else
-		print data
-	  data, _error = @socket\receive!
-	if _error
-	  @timeouts ??= 0
-	  if _error != 'timeout'
-		error 'unknown network error: ' .. tostring _error
-	  else
-		@timeouts += 1
-		if @timeouts >= 100
-		  @timeouts = 0
-		  if @ping
-			@running = false
-			error _error
-		  else
-			@send'ping'
-			@ping = true
+    data, _error = @socket\receive!
+    while data
+      data = bitser.loads data
+      local _cmd
+      if type(data) == 'string'
+        _cmd = data
+      else
+        import _cmd from data
+      switch _cmd
+        when 'batch'
+          @timeouts = 0
+          import cells from data
+          for turf in *cells
+            import x, y from turf
+            our_turf = BOARD\get_cell x, y
+            unless our_turf
+              unless istable turf
+                turf = switch turf
+                  when FLOOR 	then Floor!
+                  when WALL 	then Wall!
+                BOARD\set_cell x, y, turf
+            elseif istable turf
+              our_turf[k] = v for k, v in pairs turf
+        when 'handshake'
+          print '* connected to', @addr, @port
+          @send 'handshake'
+        when 'pong'
+          @ping = false
+        else
+          print data
+      data, _error = @socket\receive!
+    if _error
+      @timeouts ??= 0
+      if _error != 'timeout'
+        error 'unknown network error: ' .. tostring _error
+      else
+        @timeouts += 1
+        if @timeouts >= 100
+          @timeouts = 0
+          if @ping
+            @running = false
+            error _error
+          else
+            @send'ping'
+            @ping = true
 
   input: (key, char) =>
-	switch key
-	  when TK_CLOSE
-		@close!
-		os.exit 0
-	  when TK_MOUSE_LEFT
-		@holding_lmb = true
-		@send 'paint',
-		  pos: @mouse_v2
-	  when bit.bor TK_MOUSE_LEFT, TK_KEY_RELEASED
-		@holding_lmb = false
-	  when TK_MOUSE_MOVE
-		if @holding_lmb
-		  @send 'paint',
-			pos: @mouse_v2
+    switch key
+      when TK_CLOSE
+        @close!
+        os.exit 0
+      when TK_MOUSE_LEFT
+        @holding_lmb = true
+        @send 'paint',
+          pos: @mouse_v2
+      when bit.bor TK_MOUSE_LEFT, TK_KEY_RELEASED
+        @holding_lmb = false
+      when TK_MOUSE_MOVE
+        if @holding_lmb
+          @send 'paint',
+            pos: @mouse_v2
 
   render: (...) =>
-	@layer 0
-	@clear_area!
-	@put x-1, y-1, turf.glyph for _, x, y, turf in BOARD\each!
-	@put @mouse_x, @mouse_y, 0x25CB
+    @layer 0
+    @clear_area!
+    with screen = @screens.board
+      \put x, y, turf.glyph for _, x, y, turf in BOARD\each!
+      Screen.Blit @root, 1, 1, screen, 1, 1, .w, .h
+    -- for x in @width
+      -- for y in @height
+        -- with @root\get x, y
+          -- @color    = .fg
+          -- @bkcolor  = .bg
+          -- @put x, y,  .char
+    -- @put @mouse_x, @mouse_y, 0x25CB
 
   step: =>
-	if @has_input
-	  @input @read!, @state TK_CHAR
-	
-	dt = if @time
-	  offset = @time
-	  @time = time!
-	  @time - offset
-	else
-	  @time = time!
-	  0
-	
-	for v in *{1/2, 1, 2}
-	  v *= @frametime
-	  dt = v if abs(dt - v) < .002
-	dt = clamp dt, 0, @frametime*2
-	@frametimer += dt
-	@frametimer = clamp @frametimer, 0, @frametime*8
-	ticked = false
-	while @frametimer > @frametime
-	  @frametimer -= @frametime
-	  @update @frametime
-	  ticked = true
-	if ticked
-	  @render @frametimer / @frametime
-	  @refresh!
-	@delay 1
+    if @has_input
+      @input @read!, @state TK_CHAR
+    dt = if @time
+      offset = @time
+      @time = time!
+      @time - offset
+    else
+      @time = time!
+      0
+    for v in *{1/2, 1, 2}
+      v *= @frametime
+      dt = v if abs(dt - v) < .002
+    dt = clamp dt, 0, @frametime*2
+    @frametimer += dt
+    @frametimer = clamp @frametimer, 0, @frametime*8
+    ticked = false
+    while @frametimer > @frametime
+      @frametimer -= @frametime
+      @update @frametime
+      ticked = true
+    if ticked
+      @render @frametimer / @frametime
+      @refresh!
+    @delay 1
 
 CLIENT!

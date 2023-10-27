@@ -1,4 +1,6 @@
 import 'class.turf' as Turf
 
-class Floor extends Turf
+export default class Floor extends Turf
   glyph: 0x2E -- .
+
+bitser.registerClass Floor
