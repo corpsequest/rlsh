@@ -17,6 +17,8 @@ Floor, Wall = require'class.turf.floor', require'class.turf.wall'
 import 'rlsh'
 import time from rlsh
 
+import 'class.vector2' as Vec2
+
 class CLIENT using Accessors
   set: (...)				=> terminal.set ...
   delay: (...)	    		=> terminal.delay ...
@@ -106,7 +108,7 @@ class CLIENT using Accessors
       h = 40,
       scale = 1,
       @typeface = "resource/font/FSEX302.ttf",
-      @font_size = 24) =>
+      @font_size = 12) =>
     @ticks	    = 0
     @steps	    = 0
 
@@ -194,6 +196,7 @@ class CLIENT using Accessors
                   when FLOOR 	then Floor!
                   when WALL 	then Wall!
                 BOARD\set_cell x, y, turf
+                print x, y, turf
             elseif istable turf
               our_turf[k] = v for k, v in pairs turf
         when 'handshake'
@@ -244,7 +247,6 @@ class CLIENT using Accessors
 
     for x=1, @width
       for y=0, @height-1
-        print x, y
         with c = @root\get x, y
           @color    = .fg
           @bkcolor  = .bg

@@ -76,8 +76,6 @@ export default class Screen using Accessors
     if key_color.r == src.bg.r and key_color.g == src.bg.g and key_color.b == src.bg.b
       return dst
 
-    print inspect src
-
     fg_alpha *= src.fg.a / 255
     bg_alpha *= src.bg.a / 255
 

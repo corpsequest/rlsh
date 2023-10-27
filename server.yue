@@ -49,7 +49,7 @@ update = (ip, port) ->
 	  import color, glyph from c
 	  cells[] =
 		:x
-		:y 
+		:y
 		:color
 		:glyph
 	msg =
@@ -67,7 +67,7 @@ while server.running
 	  id: '%06x'\format random 0xffffff
       :port
     }
-    
+
     client = server.client[ip]
 
     data = bitser.loads data
@@ -76,15 +76,14 @@ while server.running
       when 'login'
         server.client[ip].port = port
         print '* ' .. server.client[ip].id .. ' connected *'
-		socket.sleep .01
-		update ip, port
+        socket.sleep .01
+        update ip, port
       when 'logout' then print '* ' .. server.client[ip].id .. ' disconnected *'
-	  when 'update' then update ip, port
-      when 'ping'
-        send ip, port, 'pong'
+      when 'update' then update ip, port
+      when 'ping'   then send ip, port, 'pong'
   elseif msg_or_ip != 'timeout' then
     error 'unknown network error: ' .. tostring msg_or_ip
-	
+
   socket.sleep .01
 
 server.udp\close!
