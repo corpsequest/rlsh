@@ -3,6 +3,8 @@ import random from math
 require'prerequisites'
 require'class.rng'
 
+import 'class.board' as Board
+
 WIDTH, HEIGHT = 80, 25
 
 BOARD = Board WIDTH, HEIGHT

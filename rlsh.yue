@@ -42,5 +42,3 @@ export FLAGS =
     BURN:       11
     OVERLAY:    12
     ALPHA:      13
-
-export COLORS = require'colors'

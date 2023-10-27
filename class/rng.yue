@@ -17,91 +17,85 @@ Mash = ->
 
 class RNG using Accessors
   new: (seed) =>
-	@s0 = @s1 = @s2 = 0
-	@c = 1
-	@seed = seed
-
-  s0: 0
-  s1: 0
-  s2: 0
-  c: 0
-  seed: 0
+    @s0 = @s1 = @s2 = 0
+    @c = 1
+    @seed = seed
 
   @accessor 'seed',
-	get: => @_seed
-	set: (@_seed=os.time!) =>
-	  @c = 1
-	  mash = Mash!
-	  @s0 = mash ' '
-	  @s1 = mash ' '
-	  @s2 = mash ' '
+    get: => @_seed
+    set: (@_seed=os.time!) =>
+      @c = 1
+      mash = Mash!
+      @s0 = mash ' '
+      @s1 = mash ' '
+      @s2 = mash ' '
 
-	  @s0 -= mash @seed
-	  @s0 += 1 if @s0 < 0
+      @s0 -= mash @seed
+      @s0 += 1 if @s0 < 0
 
-	  @s1 -= mash @seed
-	  @s1 += 1 if @s1 < 0
+      @s1 -= mash @seed
+      @s1 += 1 if @s1 < 0
 
-	  @s2 -= mash @seed
-	  @s2 += 1 if @s2 < 0
+      @s2 -= mash @seed
+      @s2 += 1 if @s2 < 0
 
-	  mash = nil
+      mash = nil
 
   @accessor 'uniform',
-	get: =>
-	  t = 2091639 * @s0 + @c * 2.3283064365386963e-10 --2^-32
-	  @s0 = @s1
-	  @s1 = @s2
-	  @c = floor t
-	  @s2 = t - @c
-	  @s2
+    get: =>
+      t = 2091639 * @s0 + @c * 2.3283064365386963e-10 --2^-32
+      @s0 = @s1
+      @s1 = @s2
+      @c = floor t
+      @s2 = t - @c
+      @s2
 
   @accessor 'percentage',
-	get: => 1 + floor(@uniform * 100)
+    get: => 1 + floor(@uniform * 100)
 
   --table that can be given to the RNG to return it to this state
   --useful for saving the state, eg. for replays or saving games
   --any RNG of the same type will always produce the same values
   @accessor 'state',
-	get: => {@s0, @s1, @s2, @c, @seed}
-	set: (state) =>
-	  @s0, @s1, @s2, @c, @seed = state[1], state[2], state[3], state[4], state[5]
+    get: => {@s0, @s1, @s2, @c, @seed}
+    set: (state) =>
+      @s0, @s1, @s2, @c, @seed = state[1], state[2], state[3], state[4], state[5]
 
   clone: =>
-	with clone = RNG!
-	  clone.state = @state
+    with clone = RNG!
+      clone.state = @state
 
   get_uniform_int: (mini, maxi) =>
-	maxi = math.max mini, maxi
-	mini = math.min mini, maxi
-	floor(@uniform * (maxi - mini + 1)) + mini
+    maxi = math.max mini, maxi
+    mini = math.min mini, maxi
+    floor(@uniform * (maxi - mini + 1)) + mini
 
   get_normal: (mean, standard_deviation) =>
-	repeat
-	  u = 2 * @uniform - 1
-	  v = 2 * @uniform - 1
-	  r = u * u + v * v
-	until r > 1 or r == 0
-	gauss = u * math.sqrt(-2*math.log(r)/r)
-	(mean or 0) + gauss*(standard_deviation or 1)
+    repeat
+      u = 2 * @uniform - 1
+      v = 2 * @uniform - 1
+      r = u * u + v * v
+    until r > 1 or r == 0
+    gauss = u * math.sqrt(-2*math.log(r)/r)
+    (mean or 0) + gauss*(standard_deviation or 1)
 
   get_weighted_value: (tbl) =>
-	total = 0
-	total += v for k, v in pairs tbl
-	rand = @uniform * total
-	part = 0
-	for k, v in pairs tbl
-	  part += v
-	  return k if rand < part
-	nil
+    total = 0
+    total += v for k, v in pairs tbl
+    rand = @uniform * total
+    part = 0
+    for k, v in pairs tbl
+      part += v
+      return k if rand < part
+    nil
 
   random: (a, b) =>
-	unless a
-	  return @uniform
-	elseif not b
-	  return @get_uniform_int 1, tonumber(a)
-	else
-	  return @get_uniform_int tonumber(a), tonumber(b)
+    unless a
+      return @uniform
+    elseif not b
+      return @get_uniform_int 1, tonumber(a)
+    else
+      return @get_uniform_int tonumber(a), tonumber(b)
 
 with RNG!
   .seed = nil

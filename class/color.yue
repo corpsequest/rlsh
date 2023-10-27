@@ -1,7 +1,7 @@
 import abs, clamp, floor, min, max from math
 
 export default class Color
-  new: (@r, @g, @b, @a) =>
+  new: (@r, @g, @b, @a=255) =>
     for x in *{'r', 'g', 'b'}
       @[x] = floor @[x]
       @[x] /= 255

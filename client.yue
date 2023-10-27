@@ -9,8 +9,13 @@ import format from string
 global TTY
 global BOARD
 
+Screen, Board = require'class.screen', require'class.board'
+
 FLOOR, WALL = 0, 1
 Floor, Wall = require'class.turf.floor', require'class.turf.wall'
+
+import 'rlsh'
+import time from rlsh
 
 class CLIENT using Accessors
   set: (...)				=> terminal.set ...
@@ -18,18 +23,25 @@ class CLIENT using Accessors
   refresh:		    		=> terminal.refresh!
   read:		    			=> terminal.read!
   read_str: (x=0,
-	y=0,
-	s=" ",
-	maxW=@width - #s) 		=> terminal.read_str x, y, s, maxW
+    y=0,
+    s=" ",
+    maxW=@width - #s) 		=> terminal.read_str x, y, s, maxW
   color_from_name: (name) 	=> terminal.color_from_name name
   close:		    		=>
 	  @disconnect!
 	  terminal.close!
-  clear:		    		=> terminal.clear!
+  clear:		    		=>
+    terminal.clear!
+    mt =
+      char: ' '
+      fg: Color @fg.r, @fg.g, @fg.b
+      bg: Color @bg.r, @bg.g, @bg.b
+    @tiles = [{...mt} for i=1, @width * @height]
+
   clear_area: (x=0,
-	y=0,
-	w=@width,
-	h=@height)				=> terminal.clear_area x, y, w, h
+    y=0,
+    w=@width,
+    h=@height)				=> terminal.clear_area x, y, w, h
   peek:		    			=> terminal.peek!
   state: (...)	    		=> terminal.state ...
   check: (...)	    		=> terminal.check ...
@@ -49,8 +61,8 @@ class CLIENT using Accessors
 	  get: => @_typeface
 	  set: (@_typeface) => @set"font: #{@typeface}, size=#{@font_size};"
   @accessor 'font_size',
-		-- get: => @_font_size
-    -- set: (@_font_size) => @set"font: #{@typeface}, size=#{@font_size};"
+    get: => @_font_size
+    set: (@_font_size) => @set"font: #{@typeface}, size=#{@font_size};"
   @accessor 'cursor',
     get: => @_cursor
     set: (@_cursor) => @inbuf, @enbuf = @textbuf\sub(1, @cursor), @textbuf\sub(@cursor + 1)
@@ -228,14 +240,16 @@ class CLIENT using Accessors
     @clear_area!
     with screen = @screens.board
       \put x, y, turf.glyph for _, x, y, turf in BOARD\each!
-      Screen.Blit @root, 1, 1, screen, 1, 1, .w, .h
-    -- for x in @width
-      -- for y in @height
-        -- with @root\get x, y
-          -- @color    = .fg
-          -- @bkcolor  = .bg
-          -- @put x, y,  .char
-    -- @put @mouse_x, @mouse_y, 0x25CB
+      Screen.Blit @root, 0, 0, screen, 0, 0, .w, .h
+
+    for x=1, @width
+      for y=0, @height-1
+        print x, y
+        with c = @root\get x, y
+          @color    = .fg
+          @bkcolor  = .bg
+          @put x, y,  .char
+    @put @mouse_x, @mouse_y, 0x25CB
 
   step: =>
     if @has_input

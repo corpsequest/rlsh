@@ -42,9 +42,9 @@ with table
     return 0 unless istable value
     for k, v in ipairs t
       if #v == #value
-      match = true
-      for i = 1, #v
-        if v[i] != value[i]
-        match = false
-        break
-      return k if match
+        match = true
+        for i = 1, #v
+          if v[i] != value[i]
+            match = false
+            break
+        return k if match

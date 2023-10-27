@@ -1,3 +1,5 @@
+import 'rlsh'
+import DIRS from rlsh
 import abs, ceil, floor, min, max, round from math
 import 'class.map' as Map
 

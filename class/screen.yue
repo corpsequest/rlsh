@@ -1,12 +1,14 @@
 import 'BearLibTerminal' as TTY
 
 import 'rlsh'
-import ALIGNS, COLORS, FLAGS, root from rlsh
+import ALIGNS, FLAGS, root from rlsh
 
 import clamp from math
 
 import 'class.color' as Color
 import \BlendColor from Color
+
+import 'colors'
 
 multiply  = (d, s) -> d * s / 255
 lighten   = (d, s) -> max d, s
@@ -45,9 +47,9 @@ export default class Screen using Accessors
     set: (@_bg_flag) =>
 
   new: (@w=80, @h=24) =>
-    assert @w >= 0, "Screen can't construct with negative argument 1 (width); got #{@w}"
+    assert @w >= 0, "Screen can't construct with negative argument 1 (width);  got #{@w}"
     assert @h >= 0, "Screen can't construct with negative argument 2 (height); got #{@h}"
-    @fg, @bg = COLORS.White, COLORS.Black
+    @fg, @bg = colors.White, colors.Black
     if root
       @alignment  = root.alignment
       @bg_flag    = root.bg_flag
@@ -56,8 +58,8 @@ export default class Screen using Accessors
   clear: =>
     mt =
       char: ' '
-      fg: {...Color!, ...@fg}
-      bg: {...Color!, ...@bg}
+      fg: Color @fg.r, @fg.g, @fg.b
+      bg: Color @bg.r, @bg.g, @bg.b
     @tiles = [{...mt} for i=1, @width * @height]
 
   close: =>
@@ -71,16 +73,15 @@ export default class Screen using Accessors
   @Close: -> root?\close!
 
   @BlitCell: (src, dst, fg_alpha=1, bg_alpha=1, key_color=Color(255,0,255)) ->
-    if  key_color.r == src.bg.r
-    and key_color.g == src.bg.g
-    and key_color.b == src.bg.b
+    if key_color.r == src.bg.r and key_color.g == src.bg.g and key_color.b == src.bg.b
       return dst
+
+    print inspect src
 
     fg_alpha *= src.fg.a / 255
     bg_alpha *= src.bg.a / 255
 
-    if  fg_alpha > 254.5 / 255
-    and bg_alpha > 254.5 / 255
+    if fg_alpha > 254.5 / 255 and bg_alpha > 254.5 / 255
       return src
 
     with out = Color dst.r, dst.g, dst.b, dst.a
@@ -108,18 +109,15 @@ export default class Screen using Accessors
   @BlitKeyColor: (src, xs, ys, dst, xd, yd, ws, hs, fga=1, bga=1, key_color=Color(255,0,255)) ->
     return unless src and dst
     return if ws <= 0 or hs <= 0
-    if xd + ws < 0
-    or yd + hs < 0
-    or xd >= dst.w
-    or yd >= dst.h
+    if xd + ws < 0 or yd + hs < 0 or xd >= dst.w or yd >= dst.h
       return
     for cx = xs, xs + ws
-      for cy = yx, ys + hs
+      for cy = ys, ys + hs
         dx = cx - xs + xd
         dy = cy - ys + yd
-        continue unless cx == clamp(cx, 0, src.w) and cy == clamp(cy, 0, src.h)
-        continue unless dx == clamp(dx, 0, dst.w) and dy == clamp(dy, 0, dst.h)
-        dst.tiles[dy * dst.w + dx] = Screen.BlitCell src.tiles[xy * src.w + cx],
+        continue unless cx == clamp(cx, 1, src.w) and cy == clamp(cy, 1, src.h)
+        continue unless dx == clamp(dx, 1, dst.w) and dy == clamp(dy, 1, dst.h)
+        dst.tiles[dy * dst.w + dx] = Screen.BlitCell src.tiles[cy * src.w + cx],
           dst.tiles[dy * dst.w + dx],
           fga,
           bga,
@@ -128,14 +126,14 @@ export default class Screen using Accessors
   @Blit: (src, xs, ys,
     dst, xd, yd,
     ws, hs,
-    fga, bga) -> @BlitKeyColor src, xs, ys, dst, xd, yd, ws, hs, fga, bga, src.key_color and src.key_color or nil
+    fga, bga) -> @.BlitKeyColor src, xs, ys, dst, xd, yd, ws, hs, fga, bga, src.key_color and src.key_color or nil
 
   put: (x, y, c, f) =>
     return unless x == clamp(x, 0, @w) and y == clamp(y, 0, @h)
     with @get x, y
       .char = c
-      .fg = {...Color!, ...@fg}
-      .bg = {...Color!, ...@bg}
+      .fg = Color @fg.r, @fg.g, @fg.b
+      .bg = Color @bg.r, @bg.g, @bg.b
 
   get: (x, y) => @tiles[y * @w + x]
 
@@ -161,7 +159,7 @@ export default class Screen using Accessors
       @get(x, y).fg = Color .r, .g, .b
 
   set_bg: (x, y, col, f=FLAGS.BG.DEFAULT, a=col.a) =>
-    import bg from @get(x, y)
+    bg = @get(x, y).bg
     f = @bg_flag if f == FLAGS.BG.DEFAULT
     bg = switch f
       when FLAGS.BG.SET       then Color col.r, col.g, col.b

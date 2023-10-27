@@ -1,5 +1,6 @@
 import floor from math
 import 'class.object' as Object
+import 'class.color' as Color
 
 export default class Turf extends Object
 	new: => @_contents = {}
