@@ -1,40 +1,30 @@
-import floor from math
 import 'class.object' as Object
-import 'class.color' as Color
 
-export default class Turf extends Object
-	new: => @_contents = {}
+class Turf extends Object
+  glyph: 0x20 -- space
+  fg: 'white'
+  bg: 'black'
 
-	accept: (what) => true unless what in @contents
+  new: =>
+    @_contents = {}
 
-	@accessor 'contents',
-		get: => [x for x in pairs @_contents when x.location == @]
+  @accessor 'contents',
+    get: => [x for x in *@_contents when x.location == @]
 
-	glyph: 0x20 --space
-
-	color: Color.Grey
-
-	draw: =>
-		g, c = @glyph, @color
-		if #@contents > 0
-		  with top = @contents[#@contents]
-			g = .glyph
-			c = .color
-
-			g = g top if type(g) == 'function'
-			c = c top if type(c) == 'function'
-
-			if type(c) == 'table'
-			  c = "#{floor c.r},#{floor c.g},#{floor c.b}"
-		TTY\color c
-		TTY\put @x - 1, @y - 1, g
-
-	lmb: =>
-		return unless #@contents > 0
-		@contents[#@contents]\lmb?!
-
-	rmb: =>
-		return unless #@contents > 0
-		@contents[#@contents]\rmb?!
-
-bitser.registerClass Turf
+  accept: (what) =>
+    return false if what.location == @
+    previous = what.location
+    if previous
+      previous._contents = [x for x in *previous._contents when x != what]
+    what.location = @
+    @_contents[] = what
+    both = {previous, @}
+    for cell in *both
+      continue unless cell
+      top = if #cell.contents > 0
+        cell.contents[#cell.contents]
+      else
+        cell.__class
+      cell[k] = top[k] for k in *{'glyph', 'fg', 'bg'}
+      server.broadcast 'update', cell
+    true

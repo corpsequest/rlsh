@@ -1,9 +1,11 @@
 import random from math
 
 require'prerequisites'
-require'class.rng'
-
+import 'class.rng' as RNG
 import 'class.board' as Board
+
+import 'rlsh'
+import DIRS from rlsh
 
 WIDTH, HEIGHT = 80, 25
 
@@ -12,10 +14,12 @@ BOARD = Board WIDTH, HEIGHT
 colors = {'red', 'green', 'blue', 'yellow', 'cyan', 'magenta'}
 runes = {0x2248, 0x25, 0xA7, 0x168F, 0x2D58, 0xEAAC, 0xEAB4}
 
-server =
+global server =
   running: true
   port: 7734
   client: {}
+  send: (ip, port, msg) -> server.udp\sendto bitser.dumps(msg), ip, port
+  broadcast: (msg) -> server.send ip, info.port, msg for ip, info in pairs server.client
 
 server.udp = socket.udp!
 server.udp\settimeout 0
@@ -26,8 +30,7 @@ if res
 else
   error err
 
-send = (ip, port, msg) -> server.udp\sendto bitser.dumps(msg), ip, port
-broadcast = (msg) -> send ip, info.port, msg for ip, info in pairs server.client
+import send, broadcast from server
 
 Floor, Wall = require'class.turf.floor', require'class.turf.wall'
 
@@ -66,6 +69,7 @@ while server.running
     server.client[ip] ??= {
 	  id: '%06x'\format random 0xffffff
       :port
+      send: (msg) => send @ip, @port, msg
     }
 
     client = server.client[ip]
@@ -81,7 +85,31 @@ while server.running
       when 'logout' then print '* ' .. server.client[ip].id .. ' disconnected *'
       when 'update' then update ip, port
       when 'ping'   then send ip, port, 'pong'
-      when 'post'   then broadcast data.text
+      when 'post'
+        switch data.text
+          when '@spawn'
+            mob = require'class.actor'!
+            pos = {RNG\random(1, WIDTH), RNG\random(1, HEIGHT)}
+            where = BOARD\get_cell(pos[1], pos[2])
+            while not isinstance where, Floor
+              where = BOARD\get_cell(pos[1], pos[2])
+              pos = {RNG\random(1, WIDTH), RNG\random(1, HEIGHT)}
+            mob\move_to where
+            client.mob = mob
+            mob.client = client
+            update ip, port
+          when 'n', 'e', 's', 'w'
+            dirs =
+              n: 1
+              e: 2
+              s: 3
+              w: 4
+            dir = dirs[data.text]
+            where_to = BOARD\get_cell client.mob.x + DIRS.FOUR[dir][1], client.mob.y + DIRS.FOUR[dir][2]
+            client.mob\move_to where_to
+            update ip, port
+          else
+            print data.text
   elseif msg_or_ip != 'timeout' then
     error 'unknown network error: ' .. tostring msg_or_ip
 

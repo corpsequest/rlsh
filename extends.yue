@@ -53,6 +53,8 @@ global isinstance = (obj) =>
 
 global istable = (tab) -> type(tab) == 'table'
 
+global isstring = (str) -> type(str) == 'string'
+
 global assert = (pass, ...) ->
   if pass
 	return pass, ...

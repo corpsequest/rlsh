@@ -3,4 +3,6 @@ import 'class.turf' as Turf
 export default class Wall extends Turf
   glyph: 0x23 -- #
 
+  accept: => false
+
 bitser.registerClass Wall

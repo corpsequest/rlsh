@@ -17,6 +17,8 @@ Floor, Wall = require'class.turf.floor', require'class.turf.wall'
 import 'rlsh'
 import time from rlsh
 
+import 'colors'
+
 import 'class.vector2' as Vec2
 
 class CLIENT using Accessors
@@ -80,10 +82,20 @@ class CLIENT using Accessors
     get: => @cell_height
   @accessor 'color',
     get: => terminal.state TK_COLOR
-    set: (c) => terminal.color c
+    set: (c) =>
+      if istable c
+        c = terminal.color_from_argb c.a, c.r, c.g, c.b
+      elseif isstring c
+        c = terminal.color_from_name c
+      terminal.color c
   @accessor 'bkcolor',
     get: => terminal.state TK_BKCOLOR
-    set: (c) => terminal.bkcolor c
+    set: (c) =>
+      if istable c
+        c = terminal.color_from_argb c.a, c.r, c.g, c.b
+      elseif isstring c
+        c = terminal.color_from_name c
+      terminal.bkcolor c
   @accessor 'mouse_x',
     get: => @state TK_MOUSE_X
   @accessor 'mouse_y',
@@ -99,10 +111,10 @@ class CLIENT using Accessors
   running: true
 
   new: (w = 80,
-      h = 40,
+      h = 30,
       scale = 1,
       @typeface = "resource/font/FSEX302.ttf",
-      @font_size = 12) =>
+      @font_size = 24) =>
     @ticks	    = 0
     @steps	    = 0
 
@@ -154,7 +166,7 @@ class CLIENT using Accessors
   update: (dt) =>
     --ease.update dt
     @ticks += dt
-    @caret = (time! % .6 < .3) and 0x25D6 or 0x20
+    @caret = (time! % .6 < .3) and 0x2581 or 0x20
 
     if @ticks > @updr
       @ticks -= @updr
@@ -181,8 +193,17 @@ class CLIENT using Accessors
           @timeouts = 0
           import cells from data
           for turf in *cells
-            import x, y, glyph from turf
-            BOARD\set_cell x, y, glyph
+            import x, y, glyph, fg, bg from turf
+            BOARD\set_cell x, y,
+              :glyph
+              :fg
+              :bg
+        when 'update'
+          import x, y, glyph, fg, bg from data
+          BOARD\set_cell x, y,
+            :glyph
+            :fg
+            :bg
         when 'handshake'
           print '* connected to', @addr, @port
           @send 'handshake'
@@ -196,16 +217,6 @@ class CLIENT using Accessors
       @timeouts ??= 0
       if _error != 'timeout'
         error 'unknown network error: ' .. tostring _error
-      else
-        @timeouts += 1
-        if @timeouts >= 100
-          @timeouts = 0
-          if @ping
-            @running = false
-            error _error
-          else
-            @send'ping'
-            @ping = true
 
   input: (key, char) =>
     switch key
@@ -213,14 +224,19 @@ class CLIENT using Accessors
         @close!
       when TK_RETURN
         if #@textbuf > 0
-          @send 'post',
-            text: @textbuf
+          switch @textbuf
+            when '@exit', '@quit'
+              @close!
+            else
+              @send 'post',
+                text: @textbuf
+          @history[] = @textbuf
           @textbuf = ''
           @inbuf, @enbuf = '', ''
           @size, @cursor = 0, 0
       when TK_BACKSPACE
         @size = math.max 0, #@textbuf - 1
-        @textbuf = @inbuf\sub 1, @cursor - 1 .. @enbuf
+        @textbuf = @inbuf\sub(1, @cursor - 1) .. @enbuf
         @cursor = max 0, @cursor - 1
       when TK_RIGHT then @cursor += 1
       when TK_LEFT then @cursor = math.max 0, @cursor - 1
@@ -228,7 +244,7 @@ class CLIENT using Accessors
       when TK_END then @cursor = @size
       when TK_UP
         @vursor = math.min #@history, @vursor + 1
-        @textbuf = @history[@vursor]
+        @textbuf = @history[@vursor] or ''
         @size = #@textbuf
         @cursor = @size
       when TK_DOWN
@@ -245,12 +261,19 @@ class CLIENT using Accessors
   render: (...) =>
     @layer 0
     @clear_area!
-
-    @put x-1, y-1, glyph for _, x, y, glyph in BOARD\each!
+    for _, x, y, cell in BOARD\each!
+      @color = cell.fg or 'white'
+      @bkcolor = cell.bg or 'black'
+      @put x-1, y-1, cell.glyph
     text = @inbuf .. @enbuf
     @print 0, @height - 1, text
-    for i=#@history, 0, -1
-      @print 0, 24 + i, @history[i] if @history[i]
+    for i=1, 4
+      break if #@history < i
+      mi = #@history - i + 1
+      @print 0, @height - 1 - i, @history[mi]
+    @layer 1
+    @clear_area!
+    @color = colors.Red
     @put @cursor, @height - 1, @caret
     @put @mouse_x, @mouse_y, 0x25CB
 
