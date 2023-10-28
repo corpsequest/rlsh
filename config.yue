@@ -1,5 +1,5 @@
 config =
-	ADDRESS: 	'127.0.0.1'
+	ADDRESS: 	'death.town'
 	PORT: 		'7734'
 
 config
