@@ -13,6 +13,6 @@ class Actor extends Object using Accessors
   @accessor 'x',
     get: => @pos[1]
   @accessor 'y',
-    get: => @pos
+    get: => @pos[2]
 
   move_to: (turf) => turf\accept @

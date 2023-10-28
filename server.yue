@@ -99,12 +99,14 @@ while server.running
             mob.client = client
             update ip, port
           when 'n', 'e', 's', 'w'
+            continue unless client.mob
             dirs =
               n: 1
               e: 2
               s: 3
               w: 4
             dir = dirs[data.text]
+            print inspect client.mob
             where_to = BOARD\get_cell client.mob.x + DIRS.FOUR[dir][1], client.mob.y + DIRS.FOUR[dir][2]
             client.mob\move_to where_to
             update ip, port
