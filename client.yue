@@ -32,13 +32,7 @@ class CLIENT using Accessors
   close:		    		=>
 	  @disconnect!
 	  terminal.close!
-  clear:		    		=>
-    terminal.clear!
-    mt =
-      char: ' '
-      fg: Color @fg.r, @fg.g, @fg.b
-      bg: Color @bg.r, @bg.g, @bg.b
-    @tiles = [{...mt} for i=1, @width * @height]
+  clear:		    		=> terminal.clear!
 
   clear_area: (x=0,
     y=0,
@@ -138,11 +132,6 @@ class CLIENT using Accessors
     TTY = @
     BOARD = Board!
 
-    @root = Screen @width, @height
-
-    @screens =
-      board: Screen @width, @height - 15
-
     @refresh!
     @connect!
     @step! while @running
@@ -175,6 +164,10 @@ class CLIENT using Accessors
         @send 'update'
         @update_countdown = 10
 
+    if @line
+      @send @line
+      @line = nil
+
     data, _error = @socket\receive!
     while data
       data = bitser.loads data
@@ -188,23 +181,15 @@ class CLIENT using Accessors
           @timeouts = 0
           import cells from data
           for turf in *cells
-            import x, y from turf
-            our_turf = BOARD\get_cell x, y
-            unless our_turf
-              unless istable turf
-                turf = switch turf
-                  when FLOOR 	then Floor!
-                  when WALL 	then Wall!
-                BOARD\set_cell x, y, turf
-                print x, y, turf
-            elseif istable turf
-              our_turf[k] = v for k, v in pairs turf
+            import x, y, glyph from turf
+            BOARD\set_cell x, y, glyph
         when 'handshake'
           print '* connected to', @addr, @port
           @send 'handshake'
         when 'pong'
           @ping = false
         else
+          @history[] = data
           print data
       data, _error = @socket\receive!
     if _error
@@ -226,31 +211,47 @@ class CLIENT using Accessors
     switch key
       when TK_CLOSE
         @close!
-        os.exit 0
-      when TK_MOUSE_LEFT
-        @holding_lmb = true
-        @send 'paint',
-          pos: @mouse_v2
-      when bit.bor TK_MOUSE_LEFT, TK_KEY_RELEASED
-        @holding_lmb = false
-      when TK_MOUSE_MOVE
-        if @holding_lmb
-          @send 'paint',
-            pos: @mouse_v2
+      when TK_RETURN
+        if #@textbuf > 0
+          @send 'post',
+            text: @textbuf
+          @textbuf = ''
+          @inbuf, @enbuf = '', ''
+          @size, @cursor = 0, 0
+      when TK_BACKSPACE
+        @size = math.max 0, #@textbuf - 1
+        @textbuf = @inbuf\sub 1, @cursor - 1 .. @enbuf
+        @cursor = max 0, @cursor - 1
+      when TK_RIGHT then @cursor += 1
+      when TK_LEFT then @cursor = math.max 0, @cursor - 1
+      when TK_HOME then @cursor = 0
+      when TK_END then @cursor = @size
+      when TK_UP
+        @vursor = math.min #@history, @vursor + 1
+        @textbuf = @history[@vursor]
+        @size = #@textbuf
+        @cursor = @size
+      when TK_DOWN
+        @vursor = math.max 1, @vursor - 1
+        @textbuf = @history[@vursor]
+        @size = #@textbuf
+        @cursor = @size
+      else
+        if @check TK_CHAR
+          @textbuf = @inbuf .. string.char char .. @enbuf
+          @cursor += 1
+          @size += #@textbuf
 
   render: (...) =>
     @layer 0
     @clear_area!
-    with screen = @screens.board
-      \put x, y, turf.glyph for _, x, y, turf in BOARD\each!
-      Screen.Blit @root, 0, 0, screen, 0, 0, .w, .h
 
-    for x=1, @width
-      for y=0, @height-1
-        with c = @root\get x, y
-          @color    = .fg
-          @bkcolor  = .bg
-          @put x, y,  .char
+    @put x-1, y-1, glyph for _, x, y, glyph in BOARD\each!
+    text = @inbuf .. @enbuf
+    @print 0, @height - 1, text
+    for i=#@history, 0, -1
+      @print 0, 24 + i, @history[i] if @history[i]
+    @put @cursor, @height - 1, @caret
     @put @mouse_x, @mouse_y, 0x25CB
 
   step: =>

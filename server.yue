@@ -43,19 +43,19 @@ with mapper = require'class.map.rogue' WIDTH, HEIGHT
 
 update = (ip, port) ->
   for x = 1, WIDTH
-	cells = {}
-	for y = 1, HEIGHT
-	  c = BOARD\get_cell x, y
-	  import color, glyph from c
-	  cells[] =
-		:x
-		:y
-		:color
-		:glyph
-	msg =
-	  _cmd: 'batch'
-	  :cells
-	send ip, port, msg
+    cells = {}
+    for y = 1, HEIGHT
+      c = BOARD\get_cell x, y
+      import color, glyph from c
+      cells[] =
+        :x
+        :y
+        :color
+        :glyph
+    msg =
+      _cmd: 'batch'
+      :cells
+    send ip, port, msg
 	socket.sleep .001
 
 while server.running
@@ -81,6 +81,7 @@ while server.running
       when 'logout' then print '* ' .. server.client[ip].id .. ' disconnected *'
       when 'update' then update ip, port
       when 'ping'   then send ip, port, 'pong'
+      when 'post'   then broadcast data.text
   elseif msg_or_ip != 'timeout' then
     error 'unknown network error: ' .. tostring msg_or_ip
 
